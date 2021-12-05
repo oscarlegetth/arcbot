@@ -1,11 +1,15 @@
 import os
+from asyncio.tasks import sleep
 from dotenv import load_dotenv
 from random import randint
 
 from osrsbox import items_api
+from twitchio import chatter
 from twitchio.ext import commands
 from twitchio.message import Message
 import asyncio
+
+import wheel
 
 
 # pip packages: twitchio, osrsbox, websocket
@@ -16,7 +20,8 @@ import asyncio
 
 load_dotenv()
 items = items_api.load()
-
+wheel = wheel.Wheel()
+known_bots = ["arcbot73", "creatisbot", "nightbot", "anotherttvviewer", "streamlabs"]
 
 # helper methods
 
@@ -38,12 +43,10 @@ class ArcBot(commands.Bot):
     async def event_ready(self):
         """Called once when the bot goes online."""
         message = f"{os.environ['BOT_NICK']} is online!"
+        await asyncio.sleep(1)
         print(message)
         self.send_message(message)
         
-        # ws = bot._ws  # this is only needed to send messages within event_ready
-        # await ws.send_privmsg(os.environ['CHANNEL'], f"/me has landed!")
-    
     def send_message(self, message):
         chan = bot.get_channel("arcreign")
         loop = asyncio.get_event_loop()
@@ -77,11 +80,13 @@ class ArcBot(commands.Bot):
         await ctx.send('test passed!')
 
     @commands.command(name="task")
-    async def task(self, ctx):
+    async def task(self, ctx: commands.Context):
+        if not "moderator" in ctx.author.badges:
+            return
         first_space_index = ctx.message.content.find(" ")
         if first_space_index == -1:
             return
-        message = ctx.message.content[first_space_index + 1 : ]
+        message = ctx.message.content[first_space_index + 1:]
         with open("current_task.txt", 'w') as file:
             file.write(f'{message}')
             await ctx.send(f"Task has been updated to: {message}")
@@ -93,8 +98,17 @@ class ArcBot(commands.Bot):
 
     @commands.command(name="random_user")
     async def random_user(self, ctx):
-        chatters_list = list(ctx.chatters)
-        await ctx.send(chatters_list[randint(0, len(chatters_list)) - 1].name)
+        chatters_list = [chatter.name for chatter in list(ctx.chatters) if chatter.name not in known_bots]
+        await ctx.send(chatters_list[randint(0, len(chatters_list)) - 1])
+
+    @commands.cooldown(1, 10)
+    @commands.command(name="spin")
+    async def spin_the_wheel(self, ctx):
+        username = ctx.author.name
+        result = wheel.spin(username)
+        for s in result:
+            await sleep(1)
+            await ctx.send(s)
 
 if __name__ == "__main__":
     bot = ArcBot()
