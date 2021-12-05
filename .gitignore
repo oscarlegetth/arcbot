@@ -1,1 +1,4 @@
 .env
+.secrets
+.secrets.zip
+current_task.txt
