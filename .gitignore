@@ -2,3 +2,5 @@
 .secrets
 .secrets.zip
 current_task.txt
+.vscode
+__pycache__

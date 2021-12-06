@@ -12,7 +12,7 @@ import asyncio
 import wheel
 
 
-# pip packages: twitchio, osrsbox, websocket
+# pip packages: twitchio, osrsbox, websocket, asyncio, dotenv
 # mostly code from
 # https://dev.to/ninjabunny9000/let-s-make-a-twitch-bot-with-python-2nd8
 
@@ -56,6 +56,10 @@ class ArcBot(commands.Bot):
         weird_7tv_chars = " 󠀀 󠀀" # weird characters added at the end of messages by 7tv, not just spaces!
         return  message.strip(weird_7tv_chars)
 
+    def get_random_user(self, ctx):
+        chatters_list = [chatter.name for chatter in list(ctx.chatters) if chatter.name not in known_bots]
+        return chatters_list[randint(0, len(chatters_list)) - 1]
+
     async def event_message(self, ctx):
         """Runs every time a message is sent in chat."""
 
@@ -75,7 +79,7 @@ class ArcBot(commands.Bot):
         await self.handle_commands(ctx)
 
     @commands.command(name='test')
-    async def test(self, ctx):
+    async def test(self, ctx: commands.Context):
         """Adds a '!test' command to the bot."""
         await ctx.send('test passed!')
 
@@ -93,22 +97,29 @@ class ArcBot(commands.Bot):
 
 
     @commands.command(name="random_item")
-    async def random_item(self, ctx):
+    async def random_item(self, ctx: commands.Context):
         await ctx.send(get_random_item())
 
-    @commands.command(name="random_user")
-    async def random_user(self, ctx):
-        chatters_list = [chatter.name for chatter in list(ctx.chatters) if chatter.name not in known_bots]
-        await ctx.send(chatters_list[randint(0, len(chatters_list)) - 1])
+    # @commands.command(name="random_user")
+    # async def random_user(self, ctx: commands.Context):
+    #     chatters_list = [chatter.name for chatter in list(ctx.chatters) if chatter.name not in known_bots]
+    #     await ctx.send(chatters_list[randint(0, len(chatters_list)) - 1])
 
     @commands.cooldown(1, 10)
     @commands.command(name="spin")
-    async def spin_the_wheel(self, ctx):
+    async def spin_the_wheel(self, ctx: commands.Context):
         username = ctx.author.name
         result = wheel.spin(username)
         for s in result:
             await sleep(1)
             await ctx.send(s)
+
+    @commands.cooldown(1, 10)
+    @commands.command(name="spank")
+    async def spank(self, ctx: commands.Context):
+        spanked = self.get_random_user(ctx)
+        await ctx.send(f"{ctx.author.name} has spanked {spanked} peepoShy")
+
 
 if __name__ == "__main__":
     bot = ArcBot()
