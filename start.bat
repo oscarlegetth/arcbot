@@ -1,5 +1,5 @@
 call conda activate arcbot
 
-python bot.py
+python ArcBot/__init__.py
 
 pause

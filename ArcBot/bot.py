@@ -48,7 +48,7 @@ class ArcBot(commands.Bot):
         self.send_message(message)
         
     def send_message(self, message):
-        chan = bot.get_channel("arcreign")
+        chan = self.get_channel("arcreign")
         loop = asyncio.get_event_loop()
         loop.create_task(chan.send(message))
     
@@ -120,7 +120,3 @@ class ArcBot(commands.Bot):
         spanked = self.get_random_user(ctx)
         await ctx.send(f"{ctx.author.name} has spanked {spanked} peepoShy")
 
-
-if __name__ == "__main__":
-    bot = ArcBot()
-    bot.run()
