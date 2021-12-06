@@ -1,5 +1,17 @@
-from random import randint
-from typing import List
+from random import randint, random
+
+def random_coordinate():
+    def random_coordinate_number(mult):
+        coord = str(random()*mult)
+        if len(coord) < 9:
+            coord += "0" * (9 - len(coord))
+        return coord[0:9]
+        
+    NS = ["N", "S"][randint(0, 1)]
+    WE = ["W", "E"][randint(0, 1)]
+    NS_float = random_coordinate_number(90)
+    WE_float = random_coordinate_number(180)
+    return f"{NS} {NS_float}, {WE} {WE_float}"
 
 options = {
     "30 second timeout" : "/timeout <user> 30",
@@ -13,7 +25,10 @@ options = {
     "Mind goblin" : "Mind goblin deez nuts! LaughHard",
     "Compliment" : "You look very handsome today, <user>! peepoShy",
     "Apple" : "🍎",
+    "A random cooordinate" : random_coordinate
 }
+
+
 
 class Wheel():
 
@@ -26,9 +41,14 @@ class Wheel():
         if type(reward_content) is list:
             for s in reward_content:
                 messages.append(self.insert_username(s, username))
+        elif type(reward_content) is function:
+            messages.append(reward_content())
         else:
             messages.append(self.insert_username(reward_content, username))
         return messages
     
     def insert_username(self, s, username):
         return s.replace("<user>", username)
+
+    
+

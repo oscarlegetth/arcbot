@@ -1,10 +1,12 @@
 import os
 from asyncio.tasks import sleep
+import random
 from dotenv import load_dotenv
 from random import randint
 
 from osrsbox import items_api
 from twitchio import chatter
+from twitchio.errors import AuthenticationError
 from twitchio.ext import commands
 from twitchio.message import Message
 import asyncio
@@ -63,16 +65,28 @@ class ArcBot(commands.Bot):
     async def event_message(self, ctx):
         """Runs every time a message is sent in chat."""
 
-        # make sure the bot ignores itself
         if type(ctx) is Message:
             if not ctx.author:
                 return
+            # make sure the bot ignores itself
             if ctx.author and ctx.author.name.lower() == os.environ['BOT_NICK'].lower():
                 return
+
             message = self.remove_7tv_chars(ctx.content)
             # respond to messages ending with "er?"
             if message[-3:] == "er?" and randint(0, 9) == 0:
                 self.send_message(f"{message.split()[-1]} I hardly know her!!! LaughHard")
+
+            # respond to people calling the bot stupid
+            if message[0:9].lower() == "stupid bot":
+                self.send_message(f"{ctx.author.name} is a stupid human")
+
+            # respond to bastin
+            if ctx.author.name.lower() == "bastin101" and randint(0, 3) == 0:
+                random_number = randint(0, 101)
+                self.send_message(f"bastin{random_number}+{101 - random_number} KEKW")
+
+            
         else:
             print(f"Unexpected context encountered. Type: {type(ctx)} str: {str(ctx)}")
         ctx.content = self.remove_7tv_chars(ctx.content)
@@ -87,10 +101,11 @@ class ArcBot(commands.Bot):
     async def task(self, ctx: commands.Context):
         if not "moderator" in ctx.author.badges:
             return
-        first_space_index = ctx.message.content.find(" ")
-        if first_space_index == -1:
+        
+        if len(ctx.message.content < 6):
             return
-        message = ctx.message.content[first_space_index + 1:]
+
+        message = ctx.message.content[6:]
         with open("current_task.txt", 'w') as file:
             file.write(f'{message}')
             await ctx.send(f"Task has been updated to: {message}")
@@ -114,9 +129,15 @@ class ArcBot(commands.Bot):
             await sleep(1)
             await ctx.send(s)
 
+    rare_spank_table = ["WooxSolo", "Odablock", "Framed", "J1mmy", "Faux", "Coxie", "Mmorpg", "Real_Matk", "SkillSpecs", "Mr_Mammal", "Alfie", "Roidie", "itswill", "SkiddlerRS", "Dino_xx", "JagexModAsh", "FBI_Survelliance_Van_381b"]
+
     @commands.cooldown(1, 10)
     @commands.command(name="spank")
     async def spank(self, ctx: commands.Context):
-        spanked = self.get_random_user(ctx)
+        if randint(0, 99) == 0:
+            spanked = self.rare_spank_table[randint(0, len(self.rare_spank_table) - 1)]
+        else:
+            spanked = self.get_random_user(ctx)
+
         await ctx.send(f"{ctx.author.name} has spanked {spanked} peepoShy")
 
