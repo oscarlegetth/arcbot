@@ -5,3 +5,4 @@ current_task.txt
 .vscode
 __pycache__
 ArcBot/ArcBot.egg-info
+ArcBot.egg-info
