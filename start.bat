@@ -1,5 +1,8 @@
 call conda activate arcbot
 
-python ArcBot/__init__.py
+@REM start "" python ArcBot/pubsub.py
+
+python ArcBot/bot.py
+
 
 pause

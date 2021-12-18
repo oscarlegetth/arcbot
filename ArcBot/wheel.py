@@ -28,8 +28,6 @@ options = {
     "A random cooordinate" : random_coordinate
 }
 
-
-
 class Wheel():
 
     def spin(self, username):
@@ -41,7 +39,7 @@ class Wheel():
         if type(reward_content) is list:
             for s in reward_content:
                 messages.append(self.insert_username(s, username))
-        elif type(reward_content) is function:
+        elif callable(reward_content):
             messages.append(reward_content())
         else:
             messages.append(self.insert_username(reward_content, username))
@@ -49,6 +47,3 @@ class Wheel():
     
     def insert_username(self, s, username):
         return s.replace("<user>", username)
-
-    
-

@@ -5,14 +5,14 @@ from dotenv import load_dotenv
 from random import randint
 
 from osrsbox import items_api
-from twitchio import chatter
+import twitchio
 from twitchio.errors import AuthenticationError
-from twitchio.ext import commands
+from twitchio.ext import commands, pubsub
 from twitchio.message import Message
 import asyncio
+import db
 
 import wheel
-
 
 # pip packages: twitchio, osrsbox, websocket, asyncio, dotenv
 # mostly code from
@@ -24,6 +24,8 @@ load_dotenv()
 items = items_api.load()
 wheel = wheel.Wheel()
 known_bots = ["arcbot73", "creatisbot", "nightbot", "anotherttvviewer", "streamlabs"]
+pubsub_client = twitchio.Client(token=os.environ['PUBSUB_ACCESS_TOKEN'])
+pubsub_client.pubsub = pubsub.PubSubPool(pubsub_client)
 
 # helper methods
 
@@ -41,14 +43,29 @@ class ArcBot(commands.Bot):
         nick=os.environ['BOT_NICK'], 
         prefix=os.environ['BOT_PREFIX'], 
         initial_channels=[os.environ['CHANNEL']])
+        self.db = db.DB()
 
+    async def run_pubsub(self):
+        topics = [
+            pubsub.channel_points(os.environ['PUBSUB_ACCESS_TOKEN'])[int(os.environ['CHANNEL_ID'])]
+        ]
+        await pubsub_client.pubsub.subscribe_topics(topics)
+        await pubsub_client.connect()
+        
     async def event_ready(self):
         """Called once when the bot goes online."""
+        # await self.pubsub_subscribe(os.environ['TMI_TOKEN'][6:], os.environ['CHANNEL_ID'])
+        instance = self
+        asyncio.create_task(self.run_pubsub())
         message = f"{os.environ['BOT_NICK']} is online!"
         await asyncio.sleep(1)
         print(message)
         self.send_message(message)
-        
+
+    #------------------------------------
+    # HELPER FUNCTIONS
+    #------------------------------------
+
     def send_message(self, message):
         chan = self.get_channel("arcreign")
         loop = asyncio.get_event_loop()
@@ -61,6 +78,10 @@ class ArcBot(commands.Bot):
     def get_random_user(self, ctx):
         chatters_list = [chatter.name for chatter in list(ctx.chatters) if chatter.name not in known_bots]
         return chatters_list[randint(0, len(chatters_list)) - 1]
+
+    #------------------------------------
+    # NON-COMMANDS
+    #------------------------------------
 
     async def event_message(self, ctx):
         """Runs every time a message is sent in chat."""
@@ -78,7 +99,7 @@ class ArcBot(commands.Bot):
                 self.send_message(f"{message.split()[-1]} I hardly know her!!! LaughHard")
 
             # respond to people calling the bot stupid
-            if message[0:9].lower() == "stupid bot":
+            if message[0:10].lower() == "stupid bot":
                 self.send_message(f"{ctx.author.name} is a stupid human")
 
             # respond to bastin
@@ -91,6 +112,10 @@ class ArcBot(commands.Bot):
             print(f"Unexpected context encountered. Type: {type(ctx)} str: {str(ctx)}")
         ctx.content = self.remove_7tv_chars(ctx.content)
         await self.handle_commands(ctx)
+
+    #------------------------------------
+    # COMMANDS
+    #------------------------------------
 
     @commands.command(name='test')
     async def test(self, ctx: commands.Context):
@@ -120,14 +145,14 @@ class ArcBot(commands.Bot):
     #     chatters_list = [chatter.name for chatter in list(ctx.chatters) if chatter.name not in known_bots]
     #     await ctx.send(chatters_list[randint(0, len(chatters_list)) - 1])
 
-    @commands.cooldown(1, 10)
-    @commands.command(name="spin")
-    async def spin_the_wheel(self, ctx: commands.Context):
-        username = ctx.author.name
-        result = wheel.spin(username)
-        for s in result:
-            await sleep(1)
-            await ctx.send(s)
+    # @commands.cooldown(1, 10)
+    # @commands.command(name="spin")
+    # async def spin_the_wheel(self, ctx: commands.Context):
+    #     username = ctx.author.name
+    #     result = wheel.spin(username)
+    #     for s in result:
+    #         await sleep(1)
+    #         await ctx.send(s)
 
     rare_spank_table = ["WooxSolo", "Odablock", "Framed", "J1mmy", "Faux", "Coxie", "Mmorpg", "Real_Matk", "SkillSpecs", "Mr_Mammal", "Alfie", "Roidie", "itswill", "SkiddlerRS", "Dino_xx", "JagexModAsh", "FBI_Survelliance_Van_381b"]
 
@@ -141,3 +166,49 @@ class ArcBot(commands.Bot):
 
         await ctx.send(f"{ctx.author.name} has spanked {spanked} peepoShy")
 
+    @commands.cooldown(1, 10)
+    @commands.command(name="slap")
+    async def slap(self, ctx: commands.Context):
+        if randint(0, 99) == 0:
+            slapped = self.rare_spank_table[randint(0, len(self.rare_spank_table) - 1)]
+        else:
+            slapped = self.get_random_user(ctx)
+
+        await ctx.send(f" has slapped {slapped}")
+
+    @commands.command(name="bye")
+    async def bye(self, ctx: commands.Context):
+        await ctx.send(f"/timeout {ctx.author.name} 1")
+
+    @commands.command(name="edit_record")
+    async def edit_record(self, ctx: commands.Context):
+        message = str(ctx.message.content).split(" ")[1:]
+        
+        self.db.update_record(message[0], message[1], message[2])
+        await ctx.send(f"Updated {message[0]}'s value of {message[1]} to {message[2]}")
+
+    @commands.command(name="get_record")
+    async def get_record(self, ctx: commands.Context):
+        message = str(ctx.message.content).split(" ")[1:]
+        
+        value = self.db.get_record(message[0], message[1])
+        await ctx.send(f"{message[0]} has a value of {value} of {message[1]}")
+
+    #------------------------------------
+    # CHANNEL POINT REDEMPTIONS
+    #------------------------------------
+
+    @pubsub_client.event()
+    async def event_pubsub_channel_points(event: pubsub.PubSubChannelPointsMessage):
+        if event.reward.title == "Song Request":
+            bot.send_message(f"{event.user.name} wants to listen to {event.input}")
+        elif event.reward.title == "Spin The Wheel":
+            username = event.user.name
+            result = wheel.spin(username)
+            for s in result:
+                await sleep(1)
+                bot.send_message(s)
+
+if __name__ == "__main__":
+    bot = ArcBot()
+    bot.run()
