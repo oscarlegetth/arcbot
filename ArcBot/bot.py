@@ -1,6 +1,7 @@
 import os
 from asyncio.tasks import sleep
 import random
+from time import time
 from dotenv import load_dotenv
 from random import randint
 
@@ -10,6 +11,8 @@ from twitchio.errors import AuthenticationError
 from twitchio.ext import commands, pubsub
 from twitchio.message import Message
 import asyncio
+
+from twitchio.user import UserBan
 import db
 
 import wheel
@@ -44,6 +47,7 @@ class ArcBot(commands.Bot):
         prefix=os.environ['BOT_PREFIX'], 
         initial_channels=[os.environ['CHANNEL']])
         self.db = db.DB()
+        wheel.db = self.db
 
     async def run_pubsub(self):
         topics = [
@@ -107,7 +111,7 @@ class ArcBot(commands.Bot):
                 random_number = randint(0, 101)
                 self.send_message(f"bastin{random_number}+{101 - random_number} KEKW")
 
-            
+
         else:
             print(f"Unexpected context encountered. Type: {type(ctx)} str: {str(ctx)}")
         ctx.content = self.remove_7tv_chars(ctx.content)
@@ -180,19 +184,39 @@ class ArcBot(commands.Bot):
     async def bye(self, ctx: commands.Context):
         await ctx.send(f"/timeout {ctx.author.name} 1")
 
-    @commands.command(name="edit_record")
-    async def edit_record(self, ctx: commands.Context):
-        message = str(ctx.message.content).split(" ")[1:]
-        
-        self.db.update_record(message[0], message[1], message[2])
-        await ctx.send(f"Updated {message[0]}'s value of {message[1]} to {message[2]}")
+    @commands.command(name="timeouts")
+    async def timeouts(self, ctx: commands.Context):
+        args = ctx.message.content.split()[1:]
+        if len(args) > 0:
+            timeouts = self.db.get_top_timeouts_from_spins(args[0])
+            if timeouts:
+                total_minutes = timeouts["30 second timeout"] * 0.5 \
+                                + timeouts["1 minute timeout"] \
+                                + timeouts["2 minute timeout"] * 2
+                await ctx.send(f"{args[0]} has been timed out a total of {total_minutes} minutes by the arcwheel")
+            else:
+                await ctx.send(f"{args[0]} has not yet been timed out by the arcwheel")
+        else:
+            timeouts = self.db.get_top_timeouts_from_spins()
+            
+            
 
-    @commands.command(name="get_record")
-    async def get_record(self, ctx: commands.Context):
-        message = str(ctx.message.content).split(" ")[1:]
+    # @commands.command(name="edit_record")
+    # async def edit_record(self, ctx: commands.Context):
+    #     message = str(ctx.message.content).split(" ")[1:]
         
-        value = self.db.get_record(message[0], message[1])
-        await ctx.send(f"{message[0]} has a value of {value} of {message[1]}")
+    #     self.db.update_record(message[0], message[1], message[2])
+    #     await ctx.send(f"Updated {message[0]}'s value of {message[1]} to {message[2]}")
+
+    # @commands.command(name="get_record")
+    # async def get_record(self, ctx: commands.Context):
+    #     message = str(ctx.message.content).split(" ")[1:]
+        
+    #     value = self.db.get_record(message[0], message[1])
+    #     await ctx.send(f"{message[0]} has a value of {value} of {message[1]}")
+
+
+    # @commands.command(name=time_outs)
 
     #------------------------------------
     # CHANNEL POINT REDEMPTIONS
@@ -202,7 +226,7 @@ class ArcBot(commands.Bot):
     async def event_pubsub_channel_points(event: pubsub.PubSubChannelPointsMessage):
         if event.reward.title == "Song Request":
             bot.send_message(f"{event.user.name} wants to listen to {event.input}")
-        elif event.reward.title == "Spin The Wheel":
+        elif event.reward.title == "Spin The arcWheel":
             username = event.user.name
             result = wheel.spin(username)
             for s in result:

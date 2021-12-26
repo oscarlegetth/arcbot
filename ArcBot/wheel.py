@@ -1,4 +1,6 @@
 from random import randint, random
+from sqlite3 import dbapi2
+from db import DB
 
 def random_coordinate():
     def random_coordinate_number(mult):
@@ -30,6 +32,9 @@ options = {
 
 class Wheel():
 
+    def __init__(self) -> None:
+        self.db = None
+
     def spin(self, username):
         messages = []
         messages.append(f"{username} has spun the wheel! They win a brand new...")
@@ -43,6 +48,8 @@ class Wheel():
             messages.append(reward_content())
         else:
             messages.append(self.insert_username(reward_content, username))
+
+        self.db.increment_spin_record(username, reward_name, 1)
         return messages
     
     def insert_username(self, s, username):
