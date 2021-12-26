@@ -178,7 +178,7 @@ class ArcBot(commands.Bot):
         else:
             slapped = self.get_random_user(ctx)
 
-        await ctx.send(f" has slapped {slapped}")
+        await ctx.send(f"{ctx.author.name} has slapped {slapped} x0r6ztGiggle")
 
     @commands.command(name="bye")
     async def bye(self, ctx: commands.Context):
@@ -198,8 +198,6 @@ class ArcBot(commands.Bot):
                 await ctx.send(f"{args[0]} has not yet been timed out by the arcwheel")
         else:
             timeouts = self.db.get_top_timeouts_from_spins()
-            
-            
 
     # @commands.command(name="edit_record")
     # async def edit_record(self, ctx: commands.Context):
