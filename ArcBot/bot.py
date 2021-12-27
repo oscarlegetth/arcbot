@@ -63,8 +63,8 @@ class ArcBot(commands.Bot):
         """Called once when the bot goes online."""
         # await self.pubsub_subscribe(os.environ['TMI_TOKEN'][6:], os.environ['CHANNEL_ID'])
         asyncio.create_task(self.run_pubsub())
-        version = pkg_resources.require("ArcBot")[0].version
-        message = f"{os.environ['BOT_NICK']} version {version} is online!"
+        version = pkg_resources.get_distribution('ArcBot').version
+        message = f"{os.environ['BOT_NICK']} v{version} is online!"
         await asyncio.sleep(1)
         print(message)
         self.send_message(message)
