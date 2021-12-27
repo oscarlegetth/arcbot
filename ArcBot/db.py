@@ -132,3 +132,28 @@ class DB():
 
         self.con.commit()
 
+    def get_seaman_amount(self):
+        self.cur.execute("SELECT * \
+            FROM records \
+            WHERE record_name = ? ", ("seaman_amount", ))
+
+        fetched = self.cur.fetchone()
+        if not fetched:
+            return None
+        else:
+            return int(fetched["val"])
+
+    def insert_seaman(self, amount):
+        current_amount = self.get_seaman_amount()
+        if current_amount:
+            current_amount = current_amount + amount
+            self.cur.execute("UPDATE records \
+                SET record_name = ?, \
+                val = ?", ("seaman_amount", current_amount))
+        else:
+            self.cur.execute("INSERT INTO records \
+                VALUES (?, ?, ?)", ("", "seaman_amount", 1))
+            current_amount = 1
+
+        self.con.commit()
+        return current_amount

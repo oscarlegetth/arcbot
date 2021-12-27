@@ -96,6 +96,7 @@ class ArcBot(commands.Bot):
             if ctx.author and ctx.author.name.lower() == os.environ['BOT_NICK'].lower():
                 return
 
+            ctx.content = self.remove_7tv_chars(ctx.content)
             message = self.remove_7tv_chars(ctx.content)
             # respond to messages ending with "er?"
             if message[-3:] == "er?" and randint(0, 9) == 0:
@@ -110,10 +111,8 @@ class ArcBot(commands.Bot):
                 random_number = randint(0, 101)
                 self.send_message(f"bastin{random_number}+{101 - random_number} KEKW")
 
-
         else:
             print(f"Unexpected context encountered. Type: {type(ctx)} str: {str(ctx)}")
-        ctx.content = self.remove_7tv_chars(ctx.content)
         await self.handle_commands(ctx)
 
     #------------------------------------
@@ -208,7 +207,12 @@ class ArcBot(commands.Bot):
 
     @pubsub_client.event()
     async def event_pubsub_channel_points(event: pubsub.PubSubChannelPointsMessage):
-        if event.reward.title == "Spin The arcWheel":
+        title = event.reward.title
+        if title == "Add a seaman to the arc":
+            new_amount = bot.db.insert_seaman(1)
+            bot.send_message(f"Thank you for adding more seamen to the arc. The arc now has {new_amount} seamen peepoMayo")
+            
+        elif title == "Spin The arcWheel":
             username = event.user.name
             result = wheel.spin(username)
             for s in result:
