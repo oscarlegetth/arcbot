@@ -4,6 +4,7 @@ import random
 from time import time
 from dotenv import load_dotenv
 from random import randint
+import pkg_resources
 
 from osrsbox import items_api
 import twitchio
@@ -16,6 +17,8 @@ from twitchio.user import UserBan
 import db
 
 import wheel
+
+
 
 # pip packages: twitchio, osrsbox, websocket, asyncio, dotenv
 # mostly code from
@@ -60,7 +63,8 @@ class ArcBot(commands.Bot):
         """Called once when the bot goes online."""
         # await self.pubsub_subscribe(os.environ['TMI_TOKEN'][6:], os.environ['CHANNEL_ID'])
         asyncio.create_task(self.run_pubsub())
-        message = f"{os.environ['BOT_NICK']} is online!"
+        version = pkg_resources.require("ArcBot")[0].version
+        message = f"{os.environ['BOT_NICK']} version {version} is online!"
         await asyncio.sleep(1)
         print(message)
         self.send_message(message)
