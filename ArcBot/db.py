@@ -1,21 +1,16 @@
 import sqlite3
-from typing import get_args
 
 class DB():
-
-
     def __init__(self, ) -> None:
-        self.con = sqlite3.connect("ArcBot/records.sqlite3")
-        self.cur = self.con.cursor()
+        self.con = sqlite3.connect("records.sqlite3")
         self.con.row_factory = sqlite3.Row
+        self.cur = self.con.cursor()
+        # ensure that the database is set up correctly
+        self.init_db()
 
-    def reset_db(self):
-        with open("init_db.sql") as file:
+    def init_db(self):
+        with open("ArcBot/init_db.sql") as file:
             self.cur.executescript(file.read())
-
-    def fetched_as_dict(self, fetced):
-
-        return [tuple[0] for tuple in self.cur.description]
 
     def get_record(self, username, record_name):
         self.cur.execute("SELECT * \
@@ -65,21 +60,28 @@ class DB():
         fetched = self.cur.fetchall()
         return [(row["username"], row["val"]) for row in fetched]
 
-    def get_top_timeouts_from_spins(self, username=None):
+    def get_top_timeouts(self, username=None):
         if username:
             self.cur.execute("SELECT * \
-                FROM spin_records \
-                WHERE username = ? \
-                AND record_name LIKE \"timeout\" \
-                ORDER BY val", (username,))
+                FROM timeouts \
+                WHERE username = ? ", (username,))
+            
+            fetched = self.cur.fetchone()
+            if not fetched:
+                return None
+            else:
+                return fetched["val"]
         else:
             self.cur.execute("SELECT * \
-                FROM spin_records \
-                WHERE record_name LIKE \"timeout\" \
-                ORDER BY val \
+                FROM timeouts \
+                ORDER BY val DESC \
                 LIMIT 5 ")
+            fetched = self.cur.fetchall()
+            if not fetched:
+                return None
+            else:
+                return [(row["username"], row["val"]) for row in fetched]
 
-        return self.cur.fetchall()
 
     def update_spin_record(self, username, record_name, value):
         current_record = self.get_record(username, record_name)
@@ -106,3 +108,27 @@ class DB():
                 VALUES (?, ?, ?)", (username, record_name, value))
 
         self.con.commit()
+
+    def get_timeout(self, username):
+        self.cur.execute("SELECT * \
+            FROM timeouts \
+            WHERE username = ? ", (username,))
+
+        fetched = self.cur.fetchone()
+        if not fetched:
+            return None
+        else:
+            return fetched["time"]
+
+    def insert_timeout(self, username, time):
+        current_timeout = self.get_timeout(username)
+        if current_timeout:
+            self.cur.execute("UPDATE timeouts \
+                SET val = ? \
+                WHERE username = ? ", (current_timeout + time, username))
+        else:
+            self.cur.execute("INSERT INTO timeouts \
+                VALUES (?, ?)", (username, time))
+
+        self.con.commit()
+

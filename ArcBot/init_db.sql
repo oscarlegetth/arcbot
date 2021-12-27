@@ -4,19 +4,19 @@ DROP TABLE IF EXISTS spin_records;
 DROP TABLE IF EXISTS timeouts;
 */
 
-CREATE TABLE records(
+CREATE TABLE IF NOT EXISTS records(
     username TEXT,
     record_name TEXT,
     val TEXT
 );
 
-CREATE TABLE spin_records(
+CREATE TABLE IF NOT EXISTS spin_records(
     username TEXT,
     record_name TEXT,
     val TEXT
 );
 
-CREATE TABLE timeouts(
+CREATE TABLE IF NOT EXISTS timeouts(
     username TEXT,
     val TEXT
 );

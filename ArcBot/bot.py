@@ -55,11 +55,10 @@ class ArcBot(commands.Bot):
         ]
         await pubsub_client.pubsub.subscribe_topics(topics)
         await pubsub_client.connect()
-        
+
     async def event_ready(self):
         """Called once when the bot goes online."""
         # await self.pubsub_subscribe(os.environ['TMI_TOKEN'][6:], os.environ['CHANNEL_ID'])
-        instance = self
         asyncio.create_task(self.run_pubsub())
         message = f"{os.environ['BOT_NICK']} is online!"
         await asyncio.sleep(1)
@@ -74,7 +73,7 @@ class ArcBot(commands.Bot):
         chan = self.get_channel("arcreign")
         loop = asyncio.get_event_loop()
         loop.create_task(chan.send(message))
-    
+
     def remove_7tv_chars(self, message):
         weird_7tv_chars = " 󠀀 󠀀" # weird characters added at the end of messages by 7tv, not just spaces!
         return  message.strip(weird_7tv_chars)
@@ -188,33 +187,20 @@ class ArcBot(commands.Bot):
     async def timeouts(self, ctx: commands.Context):
         args = ctx.message.content.split()[1:]
         if len(args) > 0:
-            timeouts = self.db.get_top_timeouts_from_spins(args[0])
+            timeouts = self.db.get_top_timeouts(args[0])
             if timeouts:
-                total_minutes = timeouts["30 second timeout"] * 0.5 \
-                                + timeouts["1 minute timeout"] \
-                                + timeouts["2 minute timeout"] * 2
-                await ctx.send(f"{args[0]} has been timed out a total of {total_minutes} minutes by the arcwheel")
+                await ctx.send(f"{args[0]} has been timed out a total of {timeouts} seconds by the arcwheel")
             else:
                 await ctx.send(f"{args[0]} has not yet been timed out by the arcwheel")
         else:
-            timeouts = self.db.get_top_timeouts_from_spins()
-
-    # @commands.command(name="edit_record")
-    # async def edit_record(self, ctx: commands.Context):
-    #     message = str(ctx.message.content).split(" ")[1:]
-        
-    #     self.db.update_record(message[0], message[1], message[2])
-    #     await ctx.send(f"Updated {message[0]}'s value of {message[1]} to {message[2]}")
-
-    # @commands.command(name="get_record")
-    # async def get_record(self, ctx: commands.Context):
-    #     message = str(ctx.message.content).split(" ")[1:]
-        
-    #     value = self.db.get_record(message[0], message[1])
-    #     await ctx.send(f"{message[0]} has a value of {value} of {message[1]}")
-
-
-    # @commands.command(name=time_outs)
+            timeouts = self.db.get_top_timeouts()
+            if not timeouts:
+                await ctx.send("No one has been timed out yet")
+                return
+            message = f"Top timeouts:"
+            for timeout in timeouts:
+                message = message + f"\n{timeout[0]}: {timeout[1]}"
+            await ctx.send(message)
 
     #------------------------------------
     # CHANNEL POINT REDEMPTIONS
@@ -222,9 +208,7 @@ class ArcBot(commands.Bot):
 
     @pubsub_client.event()
     async def event_pubsub_channel_points(event: pubsub.PubSubChannelPointsMessage):
-        if event.reward.title == "Song Request":
-            bot.send_message(f"{event.user.name} wants to listen to {event.input}")
-        elif event.reward.title == "Spin The arcWheel":
+        if event.reward.title == "Spin The arcWheel":
             username = event.user.name
             result = wheel.spin(username)
             for s in result:

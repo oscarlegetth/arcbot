@@ -1,8 +1,7 @@
 from random import randint, random
-from sqlite3 import dbapi2
-from db import DB
+from functools import partial
 
-def random_coordinate():
+def random_coordinate(**kwargs):
     def random_coordinate_number(mult):
         coord = str(random()*mult)
         if len(coord) < 9:
@@ -15,10 +14,14 @@ def random_coordinate():
     WE_float = random_coordinate_number(180)
     return f"{NS} {NS_float}, {WE} {WE_float}"
 
+def timeout_user(db, username, time):
+    db.insert_timeout(username, time)
+    return f"/timeout {username} {time}"
+
 options = {
-    "30 second timeout" : "/timeout <user> 30",
-    "1 minute timeout" : "/timeout <user> 60",
-    "2 minute timeout" : "/timeout <user> 120",
+    "30 second timeout" : partial(timeout_user, time=30),
+    "1 minute timeout" : partial(timeout_user, time=60),
+    "2 minute timeout" : partial(timeout_user, time=120),
     "11 LaughHards" : "LaughHard " * 11,
     "Nothing" : "This space is intentionally left blank",
     "Stache" : "https://gyazo.com/e5077b47aac7662320b523068db30399",
@@ -45,7 +48,7 @@ class Wheel():
             for s in reward_content:
                 messages.append(self.insert_username(s, username))
         elif callable(reward_content):
-            messages.append(reward_content())
+            messages.append(reward_content(db=self.db, username=username))
         else:
             messages.append(self.insert_username(reward_content, username))
 
