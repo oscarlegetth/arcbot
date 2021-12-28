@@ -118,7 +118,7 @@ class DB():
         if not fetched:
             return None
         else:
-            return fetched["time"]
+            return fetched["val"]
 
     def insert_timeout(self, username, time):
         current_timeout = self.get_timeout(username)
