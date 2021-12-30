@@ -31,7 +31,7 @@ import wheel
 load_dotenv()
 items = items_api.load()
 wheel = wheel.Wheel()
-known_bots =[]# ["arcbot73", "creatisbot", "nightbot", "anotherttvviewer", "streamlabs"]
+known_bots = ["arcbot73", "creatisbot", "nightbot", "anotherttvviewer", "streamlabs"]
 pubsub_client = twitchio.Client(token=os.environ['PUBSUB_ACCESS_TOKEN'])
 pubsub_client.pubsub = pubsub.PubSubPool(pubsub_client)
 
