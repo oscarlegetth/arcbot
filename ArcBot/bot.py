@@ -11,7 +11,7 @@ import twitchio
 from twitchio import message
 from twitchio.errors import AuthenticationError
 from twitchio.ext import commands, pubsub, routines
-from twitchio.ext.commands.core import Context, command
+from twitchio.ext.commands.core import Context, command, cooldown
 from twitchio.message import Message
 import asyncio
 from twitchio.models import AutomodCheckMessage
@@ -226,6 +226,9 @@ class ArcBot(commands.Bot):
             return
 
         args = ctx.message.content.split(" ")[1:]
+        args[1] = args[1].lower()
+        args[1] = args[1].replace("k", "000")
+        args[1] = args[1].replace("m", "000000")
         if len(args) < 2:
             await ctx.send(f"Usage: !add_coins <user or all> <amount>")
             return
@@ -266,6 +269,7 @@ class ArcBot(commands.Bot):
         top_coin_owners_string = ", ".join([str(row["username"] + ": " + row["val"]) for row in top_coin_owners])
         await ctx.send(f"Top coin owners: {top_coin_owners_string}")
 
+    @commands.cooldown(rate=1, per=5)
     @commands.command(name="gamble")
     async def gamble_coins(self, ctx: commands.Context):
         try:
@@ -276,6 +280,7 @@ class ArcBot(commands.Bot):
         current_amount = int(self.db.get_coins(ctx.author.name))
         if current_amount == 0:
             await ctx.send(f"{ctx.author.name} has no coins to gamble with!")
+            return
 
         if "all" == desired_gambling_amount:
             gambled_amount = current_amount
@@ -283,9 +288,9 @@ class ArcBot(commands.Bot):
             try:
                 gambled_amount = float(desired_gambling_amount[:-1]) / 100
             except ValueError:
-                await ctx.send(f"Invalid amount: {desired_gambling_amount}")
+                await ctx.send(f"Invalid percentage amount: {desired_gambling_amount}")
                 return
-            gambled_amount = current_amount * gambled_amount
+            gambled_amount = int(current_amount * gambled_amount)
         else:
             desired_gambling_amount = desired_gambling_amount.lower()
             desired_gambling_amount = desired_gambling_amount.replace("k", "000")
@@ -305,22 +310,22 @@ class ArcBot(commands.Bot):
         current_amount = current_amount - gambled_amount
         gamble_outcome = randint(0, 100)
         if gamble_outcome < 50:
-            await ctx.send(f"{ctx.author.name} rolled a {gamble_outcome} and lost {gambled_amount} coins.")
+            gamble_result_message = f"{ctx.author.name} rolled a {gamble_outcome} and lost {gambled_amount} coins."
             new_amount = current_amount
         elif gamble_outcome == 69:
-            await ctx.send(f"NICE BONUS!!! {ctx.author.name} rolled a {gamble_outcome} and got 4x their gamble back!.")
+            gamble_result_message = f"NICE BONUS!!! {ctx.author.name} rolled a {gamble_outcome} and got 4x their gamble back!."
             new_amount = current_amount + gambled_amount * 4
         elif gamble_outcome == 73:
-            await ctx.send(f"LaughHard NO WAY BONUS LaughHard !!! {ctx.author.name} rolled a {gamble_outcome} and got 4x their gamble back!.")
+            gamble_result_message = f"LaughHard NO WAY BONUS LaughHard !!! {ctx.author.name} rolled a {gamble_outcome} and got 4x their gamble back!."
             new_amount = current_amount + gambled_amount * 4
         elif gamble_outcome == 100:
-            await ctx.send(f"Pog BONUS Pog {ctx.author.name} rolled a {gamble_outcome} and got 4x their gamble back!.")
+            gamble_result_message = f"Pog BONUS Pog {ctx.author.name} rolled a {gamble_outcome} and got 4x their gamble back!."
             new_amount = current_amount + gambled_amount * 4
         else:
-            await ctx.send(f"{ctx.author.name} rolled a {gamble_outcome} and got 2x their gamble back!.")
+            gamble_result_message = f"{ctx.author.name} rolled a {gamble_outcome} and got 2x their gamble back!."
             new_amount = current_amount + gambled_amount * 2
         await sleep(0.5)
-        await ctx.send(f"{ctx.author.name} now has {new_amount} coins.")
+        await ctx.send(f"{gamble_result_message} {ctx.author.name} now has {new_amount} coins.")
         self.db.update_coins(ctx.author.name, new_amount)
 
     #------------------------------------
