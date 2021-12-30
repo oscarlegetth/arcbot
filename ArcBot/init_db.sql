@@ -17,6 +17,11 @@ CREATE TABLE IF NOT EXISTS spin_records(
 );
 
 CREATE TABLE IF NOT EXISTS timeouts(
-    username TEXT,
+    username TEXT PRIMARY KEY,
+    val TEXT
+);
+
+CREATE TABLE IF NOT EXISTS coins(
+    username TEXT PRIMARY KEY,
     val TEXT
 );

@@ -12,6 +12,8 @@ class DB():
         with open("ArcBot/init_db.sql") as file:
             self.cur.executescript(file.read())
 
+    # general records
+
     def get_record(self, username, record_name):
         self.cur.execute("SELECT * \
             FROM records \
@@ -36,6 +38,8 @@ class DB():
                 VALUES (?, ?, ?)", (username, record_name, value))
 
         self.con.commit()
+
+    # spin records
 
 
     def get_spin_record(self, username, record_name):
@@ -131,6 +135,8 @@ class DB():
                 VALUES (?, ?)", (username, time))
 
         self.con.commit()
+    
+    # seaman
 
     def get_seaman_amount(self):
         self.cur.execute("SELECT * \
@@ -157,3 +163,40 @@ class DB():
 
         self.con.commit()
         return current_amount
+
+    # coin gambling
+
+    def get_coins(self, username):
+        self.cur.execute("SELECT * \
+            FROM coins \
+            WHERE username = ? ", (username,))
+
+        fetched = self.cur.fetchone()
+        if not fetched:
+            return "0"
+        else:
+            return fetched["val"]
+
+    def update_coins(self, username, coins):
+        self.cur.execute("INSERT INTO coins(username, val) VALUES (?, ?) \
+            ON CONFLICT(username) DO UPDATE SET val= ? \
+            WHERE username = ?", (username, coins, coins, username))
+        self.con.commit()
+
+    def add_coins(self, users, amount):
+        user_list = [(u, amount, amount, u) for u in users]
+        self.cur.executemany("INSERT INTO coins(username, val) VALUES (?, ?) \
+            ON CONFLICT(username) DO UPDATE SET val=val+? \
+            WHERE username = ?", (user_list))
+
+        self.con.commit()
+        
+        # if current_timeout:
+        #     self.cur.execute("UPDATE coins \
+        #         SET val = ? \
+        #         WHERE username = ? ", (coins, username))
+        # else:
+        #     self.cur.execute("INSERT INTO coins \
+        #         VALUES (?, ?)", (username, coins))
+
+        # self.con.commit()

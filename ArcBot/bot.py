@@ -10,8 +10,10 @@ from osrsbox import items_api
 import twitchio
 from twitchio.errors import AuthenticationError
 from twitchio.ext import commands, pubsub
+from twitchio.ext.commands.core import Context, command
 from twitchio.message import Message
 import asyncio
+from twitchio.models import AutomodCheckMessage
 
 from twitchio.user import UserBan
 import db
@@ -29,7 +31,7 @@ import wheel
 load_dotenv()
 items = items_api.load()
 wheel = wheel.Wheel()
-known_bots = ["arcbot73", "creatisbot", "nightbot", "anotherttvviewer", "streamlabs"]
+known_bots =[]# ["arcbot73", "creatisbot", "nightbot", "anotherttvviewer", "streamlabs"]
 pubsub_client = twitchio.Client(token=os.environ['PUBSUB_ACCESS_TOKEN'])
 pubsub_client.pubsub = pubsub.PubSubPool(pubsub_client)
 
@@ -61,8 +63,7 @@ class ArcBot(commands.Bot):
 
     async def event_ready(self):
         """Called once when the bot goes online."""
-        # await self.pubsub_subscribe(os.environ['TMI_TOKEN'][6:], os.environ['CHANNEL_ID'])
-        asyncio.create_task(self.run_pubsub())
+        #asyncio.create_task(self.run_pubsub())
         version = pkg_resources.get_distribution('ArcBot').version
         message = f"{os.environ['BOT_NICK']} v{version} is online!"
         await asyncio.sleep(1)
@@ -74,7 +75,7 @@ class ArcBot(commands.Bot):
     #------------------------------------
 
     def send_message(self, message):
-        chan = self.get_channel("arcreign")
+        chan = self.get_channel(os.environ["CHANNEL"][1:])
         loop = asyncio.get_event_loop()
         loop.create_task(chan.send(message))
 
@@ -85,6 +86,9 @@ class ArcBot(commands.Bot):
     def get_random_user(self, ctx):
         chatters_list = [chatter.name for chatter in list(ctx.chatters) if chatter.name not in known_bots]
         return chatters_list[randint(0, len(chatters_list)) - 1]
+
+    def check_if_mod(self, user):
+        return "moderator" in user.badges or "broadcaster" in user.badges
 
     #------------------------------------
     # NON-COMMANDS
@@ -204,6 +208,110 @@ class ArcBot(commands.Bot):
             for timeout in timeouts:
                 message = message + f"\n{timeout[0]}: {timeout[1]}"
             await ctx.send(message)
+
+    @commands.command(name="coins")
+    async def info_coins(self, ctx: commands.Context):
+        await ctx.reply(f"Available coin commands: !add_coins <user> <amount>, !get_coins <user>, !gamble <amount>, !top_coins")
+
+    @commands.command(name="add_coins")
+    async def add_coins(self, ctx: commands.Context):
+        if not self.check_if_mod(ctx.author):
+            await ctx.reply(f"You're not a moderator x0r6ztGiggle")
+            return
+
+        args = ctx.message.content.split(" ")[1:]
+        if len(args) < 2:
+            await ctx.send(f"Usage: !add_coins <user or all> <amount>")
+            return
+        try:
+            amount = int(args[1])
+        except ValueError:
+            await ctx.send(f"Invalid amount: {args[1]}")
+            return
+        except IndexError:
+            amount = 1
+
+        if args[0] == "all":
+            chatters_list = [chatter.name for chatter in list(ctx.chatters) if chatter.name not in known_bots]
+            self.db.add_coins(chatters_list, amount)
+            await ctx.send(f"Gave everyone {amount} coins")
+        else:
+            self.db.add_coins([args[0]], amount)
+            await ctx.send(f"Gave {args[0]} {amount} coins")
+
+    @commands.command(name="get_coins")
+    async def get_coins(self, ctx: commands.Context):
+        args = ctx.message.content.split(" ")[1:]
+        if len(args) > 0:
+            user = args[0]
+        else:
+            user = ctx.author.name
+
+        await ctx.send(f"{user} has {self.db.get_coins(user)} coins.")
+
+    @commands.command(name="top_coins")
+    async def gamble_coins(self, ctx: commands.Context):
+        await ctx.send(f"soon (tm)")
+
+    @commands.command(name="gamble")
+    async def gamble_coins(self, ctx: commands.Context):
+        try:
+            desired_gambling_amount = ctx.message.content.split(" ")[1:][0]
+        except IndexError:
+            await ctx.send("No amount given, use !gamble <amount>")
+            return
+        current_amount = int(self.db.get_coins(ctx.author.name))
+        if current_amount == 0:
+            await ctx.send(f"{ctx.author.name} has no coins to gamble with!")
+
+        if "all" == desired_gambling_amount:
+            gambled_amount = current_amount
+        elif "%" in desired_gambling_amount:
+            try:
+                gambled_amount = float(desired_gambling_amount[:-1]) / 100
+            except ValueError:
+                await ctx.send(f"Invalid amount: {desired_gambling_amount}")
+                return
+            gambled_amount = current_amount * gambled_amount
+        else:
+            desired_gambling_amount = desired_gambling_amount.lower()
+            desired_gambling_amount = desired_gambling_amount.replace("k", "000")
+            desired_gambling_amount = desired_gambling_amount.replace("m", "000000")
+            try:
+                gambled_amount = int(desired_gambling_amount)
+            except ValueError:
+                await ctx.send(f"Invalid amount: {desired_gambling_amount}")
+                return
+        if current_amount < gambled_amount:
+                await ctx.send(f"You can not gamble {gambled_amount} coins, you only have {current_amount} coins")
+                return
+        elif gambled_amount < 0:
+                await ctx.send(f"You can not gamble a negative amount of coins.")
+                return
+
+        current_amount = current_amount - gambled_amount
+        gamble_outcome = randint(0, 100)
+        if gamble_outcome < 50:
+            await ctx.send(f"{ctx.author.name} rolled a {gamble_outcome} and lost {gambled_amount} coins.")
+            new_amount = current_amount
+        elif gamble_outcome == 69:
+            await ctx.send(f"NICE BONUS!!! {ctx.author.name} rolled a {gamble_outcome} and got 4x their gamble back!.")
+            new_amount = current_amount + gambled_amount * 4
+        elif gamble_outcome == 73:
+            await ctx.send(f"LaughHard NO WAY BONUS LaughHard !!! {ctx.author.name} rolled a {gamble_outcome} and got 4x their gamble back!.")
+            new_amount = current_amount + gambled_amount * 4
+        elif gamble_outcome == 100:
+            await ctx.send(f"Pog BONUS Pog {ctx.author.name} rolled a {gamble_outcome} and got 4x their gamble back!.")
+            new_amount = current_amount + gambled_amount * 4
+        else:
+            await ctx.send(f"{ctx.author.name} rolled a {gamble_outcome} and got 2x their gamble back!.")
+            new_amount = current_amount + gambled_amount * 2
+        await sleep(0.5)
+        await ctx.send(f"{ctx.author.name} now has {new_amount} coins.")
+        self.db.update_coins(ctx.author.name, new_amount)
+
+
+
 
     #------------------------------------
     # CHANNEL POINT REDEMPTIONS
