@@ -1,5 +1,5 @@
 import os
-from asyncio.tasks import sleep
+from asyncio.tasks import sleep, wait
 import random
 from time import time
 from dotenv import load_dotenv
@@ -8,8 +8,9 @@ import pkg_resources
 
 from osrsbox import items_api
 import twitchio
+from twitchio import message
 from twitchio.errors import AuthenticationError
-from twitchio.ext import commands, pubsub
+from twitchio.ext import commands, pubsub, routines
 from twitchio.ext.commands.core import Context, command
 from twitchio.message import Message
 import asyncio
@@ -32,6 +33,7 @@ load_dotenv()
 items = items_api.load()
 wheel = wheel.Wheel()
 known_bots = ["arcbot73", "creatisbot", "nightbot", "anotherttvviewer", "streamlabs"]
+chatters_cache = ["dfaddf"]
 pubsub_client = twitchio.Client(token=os.environ['PUBSUB_ACCESS_TOKEN'])
 pubsub_client.pubsub = pubsub.PubSubPool(pubsub_client)
 
@@ -63,12 +65,13 @@ class ArcBot(commands.Bot):
 
     async def event_ready(self):
         """Called once when the bot goes online."""
-        #asyncio.create_task(self.run_pubsub())
+        asyncio.create_task(self.run_pubsub())
         version = pkg_resources.get_distribution('ArcBot').version
         message = f"{os.environ['BOT_NICK']} v{version} is online!"
         await asyncio.sleep(1)
         print(message)
         self.send_message(message)
+        self.add_coins_routine.start()
 
     #------------------------------------
     # HELPER FUNCTIONS
@@ -96,7 +99,6 @@ class ArcBot(commands.Bot):
 
     async def event_message(self, ctx):
         """Runs every time a message is sent in chat."""
-
         if type(ctx) is Message:
             if not ctx.author:
                 return
@@ -121,6 +123,10 @@ class ArcBot(commands.Bot):
 
         else:
             print(f"Unexpected context encountered. Type: {type(ctx)} str: {str(ctx)}")
+        
+        global chatters_cache
+        chatters_cache = (await bot.get_context(ctx)).chatters
+
         await self.handle_commands(ctx)
 
     #------------------------------------
@@ -230,7 +236,6 @@ class ArcBot(commands.Bot):
             return
         except IndexError:
             amount = 1
-
         if args[0] == "all":
             chatters_list = [chatter.name for chatter in list(ctx.chatters) if chatter.name not in known_bots]
             self.db.add_coins(chatters_list, amount)
@@ -238,6 +243,12 @@ class ArcBot(commands.Bot):
         else:
             self.db.add_coins([args[0]], amount)
             await ctx.send(f"Gave {args[0]} {amount} coins")
+
+    @routines.routine(minutes=5, wait_first=True)
+    async def add_coins_routine(self):
+        chatters_list = [chatter.name for chatter in list(chatters_cache) if chatter.name not in known_bots]
+        self.db.add_coins(chatters_list, 100)
+        print("Added coins")
 
     @commands.command(name="get_coins")
     async def get_coins(self, ctx: commands.Context):
@@ -311,9 +322,6 @@ class ArcBot(commands.Bot):
         await sleep(0.5)
         await ctx.send(f"{ctx.author.name} now has {new_amount} coins.")
         self.db.update_coins(ctx.author.name, new_amount)
-
-
-
 
     #------------------------------------
     # CHANNEL POINT REDEMPTIONS
