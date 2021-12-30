@@ -179,7 +179,7 @@ class DB():
 
     def update_coins(self, username, coins):
         self.cur.execute("INSERT INTO coins(username, val) VALUES (?, ?) \
-            ON CONFLICT(username) DO UPDATE SET val= ? \
+            ON CONFLICT(username) DO UPDATE SET val=? \
             WHERE username = ?", (username, coins, coins, username))
         self.con.commit()
 
@@ -190,6 +190,14 @@ class DB():
             WHERE username = ?", (user_list))
 
         self.con.commit()
+
+    def get_top_coins(self):
+        self.cur.execute("SELECT * \
+            FROM coins \
+            ORDER BY val DESC \
+            LIMIT 10")
+        
+        return self.cur.fetchall()
         
         # if current_timeout:
         #     self.cur.execute("UPDATE coins \

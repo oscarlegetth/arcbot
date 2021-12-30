@@ -250,8 +250,10 @@ class ArcBot(commands.Bot):
         await ctx.send(f"{user} has {self.db.get_coins(user)} coins.")
 
     @commands.command(name="top_coins")
-    async def gamble_coins(self, ctx: commands.Context):
-        await ctx.send(f"soon (tm)")
+    async def top_coins(self, ctx: commands.Context):
+        top_coin_owners = self.db.get_top_coins()
+        top_coin_owners_string = ", ".join([str(row["username"] + ": " + row["val"]) for row in top_coin_owners])
+        await ctx.send(f"Top coin owners: {top_coin_owners_string}")
 
     @commands.command(name="gamble")
     async def gamble_coins(self, ctx: commands.Context):
