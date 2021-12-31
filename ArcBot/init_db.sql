@@ -18,10 +18,15 @@ CREATE TABLE IF NOT EXISTS spin_records(
 
 CREATE TABLE IF NOT EXISTS timeouts(
     username TEXT PRIMARY KEY,
-    val TEXT
+    val INT
 );
 
 CREATE TABLE IF NOT EXISTS coins(
     username TEXT PRIMARY KEY,
-    val TEXT
+    val INT
+);
+
+CREATE TABLE IF NOT EXISTS hcim_bets(
+    username TEXT PRIMARY KEY,
+    bet INT
 );

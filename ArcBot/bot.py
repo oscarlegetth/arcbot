@@ -244,20 +244,20 @@ class ArcBot(commands.Bot):
             self.db.add_coins(chatters_list, amount)
             await ctx.send(f"Gave everyone {amount} coins")
         else:
-            self.db.add_coins([args[0]], amount)
-            await ctx.send(f"Gave {args[0]} {amount} coins")
+            username = args[0].lower()
+            self.db.add_coins([username], amount)
+            await ctx.send(f"Gave {username} {amount} coins")
 
     @routines.routine(minutes=5, wait_first=True)
     async def add_coins_routine(self):
         chatters_list = [chatter.name for chatter in list(chatters_cache) if chatter.name not in known_bots]
         self.db.add_coins(chatters_list, 100)
-        print("Added coins")
 
     @commands.command(name="get_coins")
     async def get_coins(self, ctx: commands.Context):
         args = ctx.message.content.split(" ")[1:]
         if len(args) > 0:
-            user = args[0]
+            user = args[0].lower()
         else:
             user = ctx.author.name
 
@@ -266,7 +266,7 @@ class ArcBot(commands.Bot):
     @commands.command(name="top_coins")
     async def top_coins(self, ctx: commands.Context):
         top_coin_owners = self.db.get_top_coins()
-        top_coin_owners_string = ", ".join([str(row["username"] + ": " + row["val"]) for row in top_coin_owners])
+        top_coin_owners_string = ", ".join([str(row["username"] + ": " + str(row["val"])) for row in top_coin_owners])
         await ctx.send(f"Top coin owners: {top_coin_owners_string}")
 
     @commands.cooldown(rate=1, per=5)
@@ -327,6 +327,60 @@ class ArcBot(commands.Bot):
         await sleep(0.5)
         await ctx.send(f"{gamble_result_message} {ctx.author.name} now has {new_amount} coins.")
         self.db.update_coins(ctx.author.name, new_amount)
+
+    @commands.command(name="bet")
+    async def info_bet(self, ctx: commands.Context):
+        await ctx.reply("Type \"!place_bet <total_level>\" to guess at which total level arcReign's HCIM will die. Type \"!check_bet\" to check your bet.")
+
+
+    async def place_bet(self, username, bet, ctx):
+        try:
+            bet = int(bet)
+        except ValueError:
+            await ctx.reply(f"{bet} is not an integer.")
+            return
+        if bet < 32 or bet > 2277:
+            await ctx.reply(f"{bet} is not a valid total level.")
+            return
+        self.db.insert_hcim_bet(username, bet)
+        await ctx.reply(f"{username} has placed a bet! {bet}.")
+
+    @commands.command(name="place_bet")
+    async def place_hcim_bet(self, ctx: commands.Context):
+        username = ctx.author.name
+        current_bet = self.db.get_hcim_bet(username)
+        if current_bet:
+            await ctx.reply(f"{username} already has a bet: {current_bet} ask moderator if you would like your bet changed.")
+            return
+        args = ctx.message.content.split(" ")[1:]
+        if len(args) == 0:
+            await ctx.reply("Type \"!place_bet <total_level>\" to guess at which total level arcReign's HCIM will die.")
+            return
+        bet = args[0]
+        await self.place_bet(username, bet, ctx)
+
+    @commands.command(name="mod_place_bet")
+    async def mod_place_hcim_bet(self, ctx: commands.Context):
+        if not self.check_if_mod(ctx.author):
+            await ctx.reply(f"You're not a moderator x0r6ztGiggle")
+            return
+
+        args = ctx.message.content.split(" ")[1:]
+        if len(args) < 2:
+            await ctx.reply("Type \"!mod_place_bet <username> <total_level>\" to set a user's guess at which total level arcReign's HCIM will die.")
+            return
+        username = args[0].lower()
+        bet = args[1]
+        await self.place_bet(username, bet, ctx)
+
+    @commands.command(name="check_bet")
+    async def check_hcim_bet(self, ctx: commands.Context):
+        username = ctx.author.name
+        bet = self.db.get_hcim_bet(username)
+        if not bet:
+            await ctx.reply(f"{username}'s has not placed a bet yet. Place a bet with \"!place_bet <total_level>\".")
+        else:
+            await ctx.reply(f"{username}'s bet is {bet}.")
 
     #------------------------------------
     # CHANNEL POINT REDEMPTIONS

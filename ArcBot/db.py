@@ -199,12 +199,22 @@ class DB():
         
         return self.cur.fetchall()
         
-        # if current_timeout:
-        #     self.cur.execute("UPDATE coins \
-        #         SET val = ? \
-        #         WHERE username = ? ", (coins, username))
-        # else:
-        #     self.cur.execute("INSERT INTO coins \
-        #         VALUES (?, ?)", (username, coins))
+    # hcim death bets
+    def insert_hcim_bet(self, username, bet):
+        self.cur.execute("INSERT INTO hcim_bets(username, bet) VALUES (?, ?) \
+            ON CONFLICT(username) DO UPDATE SET bet=? \
+            WHERE username = ?", (username, bet, bet, username))
+        self.con.commit()
 
-        # self.con.commit()
+    def get_hcim_bet(self, username):
+        self.cur.execute("SELECT * \
+            FROM hcim_bets \
+            WHERE username = ? ", (username,))
+
+        fetched = self.cur.fetchone()
+        if not fetched:
+            return None
+        else:
+            return fetched["bet"]
+
+
