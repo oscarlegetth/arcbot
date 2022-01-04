@@ -17,11 +17,10 @@ import asyncio
 from twitchio.models import AutomodCheckMessage
 
 from twitchio.user import UserBan
+from ArcBot.sailing import Sailing
 import db
 
 import wheel
-
-
 
 # pip packages: twitchio, osrsbox, websocket, asyncio, dotenv
 # mostly code from
@@ -55,6 +54,7 @@ class ArcBot(commands.Bot):
         initial_channels=[os.environ['CHANNEL']])
         self.db = db.DB()
         wheel.db = self.db
+        bot.add_cog(Sailing(bot))
 
     async def run_pubsub(self):
         topics = [
@@ -382,6 +382,16 @@ class ArcBot(commands.Bot):
         else:
             await ctx.reply(f"{username}'s bet is {bet}.")
 
+    @commands.command(name="sailing")
+    async def sailing(self, ctx: commands.Context):
+        if self.check_if_mod(ctx.author):
+            args = ctx.message.content.split(" ")[1:]
+            if len(args) > 1:
+                if args[0] == "enable" and "Sailing" not in bot.cogs:
+                    bot.add_cog(Sailing(bot))
+                elif args[1] == "disable" and "Sailing" in bot.cogs:
+                    bot.remove_cog("Sailing")
+
     #------------------------------------
     # CHANNEL POINT REDEMPTIONS
     #------------------------------------
@@ -399,6 +409,9 @@ class ArcBot(commands.Bot):
             for s in result:
                 await sleep(1)
                 bot.send_message(s)
+
+        elif title == "Buy ship and crew":
+            pass
 
 if __name__ == "__main__":
     bot = ArcBot()
