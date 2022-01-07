@@ -4,6 +4,7 @@ import random
 from time import time
 from dotenv import load_dotenv
 from random import randint
+import dotenv
 import pkg_resources
 
 from osrsbox import items_api
@@ -17,10 +18,11 @@ import asyncio
 from twitchio.models import AutomodCheckMessage
 
 from twitchio.user import UserBan
-from ArcBot.sailing import Sailing
+from sailing import Sailing
 import db
 
 import wheel
+import sys
 
 # pip packages: twitchio, osrsbox, websocket, asyncio, dotenv
 # mostly code from
@@ -28,11 +30,16 @@ import wheel
 
 # global objects
 
-load_dotenv()
+if len(sys.argv) > 1:
+    dotenv_path = sys.argv[1]
+else:
+    dotenv_path = ".env"
+
+load_dotenv(dotenv_path=dotenv_path)
 items = items_api.load()
 wheel = wheel.Wheel()
 known_bots = ["arcbot73", "creatisbot", "nightbot", "anotherttvviewer", "streamlabs"]
-chatters_cache = ["dfaddf"]
+chatters_cache = []
 pubsub_client = twitchio.Client(token=os.environ['PUBSUB_ACCESS_TOKEN'])
 pubsub_client.pubsub = pubsub.PubSubPool(pubsub_client)
 
@@ -54,7 +61,7 @@ class ArcBot(commands.Bot):
         initial_channels=[os.environ['CHANNEL']])
         self.db = db.DB()
         wheel.db = self.db
-        bot.add_cog(Sailing(bot))
+        self.add_cog(Sailing(self))
 
     async def run_pubsub(self):
         topics = [
