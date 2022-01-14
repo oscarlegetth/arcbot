@@ -42,7 +42,7 @@ class Gamble(commands.Cog):
             self.bot.db.add_coins([username], amount)
             await ctx.send(f"Gave {username} {amount} coins")
 
-    @routines.routine(minutes=5, wait_first=True)
+    @routines.routine(minutes=5, wait_first=False)
     async def add_coins_routine(self):
         chatters_list = [chatter.name for chatter in list(self.bot.chatters_cache) if chatter.name not in self.bot.known_bots]
         self.bot.db.add_coins(chatters_list, 100)

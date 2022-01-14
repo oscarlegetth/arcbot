@@ -1,5 +1,6 @@
 import os
 from asyncio.tasks import sleep
+from xml.dom.minidom import CharacterData
 from dotenv import load_dotenv
 from random import randint
 
@@ -33,8 +34,6 @@ else:
 load_dotenv(dotenv_path=dotenv_path)
 items = items_api.load()
 wheel = wheel.Wheel()
-known_bots = ["arcbot73", "creatisbot", "nightbot", "anotherttvviewer", "streamlabs", "kaxips06"]
-chatters_cache = []
 pubsub_client = twitchio.Client(token=os.environ['PUBSUB_ACCESS_TOKEN'])
 pubsub_client.pubsub = pubsub.PubSubPool(pubsub_client)
 cogs = {"Sailing" : Sailing, "Gamble" : Gamble, "HCIM_bets" : HCIM_bets}
@@ -57,6 +56,8 @@ class ArcBot(commands.Bot):
         initial_channels=[os.environ['CHANNEL']])
         self.db = db.DB()
         wheel.db = self.db
+        self.chatters_cache = []
+        self.known_bots = ["arcbot73", "creatisbot", "nightbot", "anotherttvviewer", "streamlabs", "kaxips06"]
         
         for default_cog in os.environ["DEFAULT_COGS"].split(" "):
             self.add_cog(cogs[default_cog](self))
@@ -93,7 +94,7 @@ class ArcBot(commands.Bot):
         return  message.strip(weird_7tv_chars)
 
     def get_random_user(self, ctx):
-        chatters_list = [chatter.name for chatter in list(ctx.chatters) if chatter.name not in known_bots]
+        chatters_list = [chatter.name for chatter in list(ctx.chatters) if chatter.name not in self.known_bots]
         return chatters_list[randint(0, len(chatters_list)) - 1]
 
     def check_if_mod(self, user):
@@ -129,10 +130,8 @@ class ArcBot(commands.Bot):
 
         else:
             print(f"Unexpected context encountered. Type: {type(ctx)} str: {str(ctx)}")
-        
-        global chatters_cache
-        chatters_cache = (await bot.get_context(ctx)).chatters
 
+        self.chatters_cache = (await bot.get_context(ctx)).chatters
         await self.handle_commands(ctx)
 
     #------------------------------------
