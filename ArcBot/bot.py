@@ -1,24 +1,19 @@
 import os
-from asyncio.tasks import sleep, wait
-import random
-from time import time
+from asyncio.tasks import sleep
 from dotenv import load_dotenv
 from random import randint
-import dotenv
+
 import pkg_resources
 
 from osrsbox import items_api
 import twitchio
-from twitchio import message
-from twitchio.errors import AuthenticationError
-from twitchio.ext import commands, pubsub, routines
-from twitchio.ext.commands.core import Context, command, cooldown
+from twitchio.ext import commands, pubsub
 from twitchio.message import Message
 import asyncio
-from twitchio.models import AutomodCheckMessage
 
-from twitchio.user import UserBan
 from sailing import Sailing
+from hcim_bets import HCIM_bets
+from gamble import Gamble
 import db
 
 import wheel
@@ -38,10 +33,11 @@ else:
 load_dotenv(dotenv_path=dotenv_path)
 items = items_api.load()
 wheel = wheel.Wheel()
-known_bots = ["arcbot73", "creatisbot", "nightbot", "anotherttvviewer", "streamlabs"]
+known_bots = ["arcbot73", "creatisbot", "nightbot", "anotherttvviewer", "streamlabs", "kaxips06"]
 chatters_cache = []
 pubsub_client = twitchio.Client(token=os.environ['PUBSUB_ACCESS_TOKEN'])
 pubsub_client.pubsub = pubsub.PubSubPool(pubsub_client)
+cogs = {"Sailing" : Sailing, "Gamble" : Gamble, "HCIM_bets" : HCIM_bets}
 
 # helper methods
 
@@ -61,7 +57,10 @@ class ArcBot(commands.Bot):
         initial_channels=[os.environ['CHANNEL']])
         self.db = db.DB()
         wheel.db = self.db
-        self.add_cog(Sailing(self))
+        
+        for default_cog in os.environ["DEFAULT_COGS"].split(" "):
+            self.add_cog(cogs[default_cog](self))
+
 
     async def run_pubsub(self):
         topics = [
@@ -78,7 +77,7 @@ class ArcBot(commands.Bot):
         await asyncio.sleep(1)
         print(message)
         self.send_message(message)
-        self.add_coins_routine.start()
+
 
     #------------------------------------
     # HELPER FUNCTIONS
@@ -179,7 +178,7 @@ class ArcBot(commands.Bot):
 
     rare_spank_table = ["WooxSolo", "Odablock", "Framed", "J1mmy", "Faux", "Coxie", "Mmorpg", "Real_Matk", "SkillSpecs", "Mr_Mammal", "Alfie", "Roidie", "itswill", "SkiddlerRS", "Dino_xx", "JagexModAsh", "FBI_Survelliance_Van_381b"]
 
-    @commands.cooldown(1, 10)
+    @commands.cooldown(1, 10, bucket=commands.cooldowns.Bucket.user)
     @commands.command(name="spank")
     async def spank(self, ctx: commands.Context):
         if randint(0, 99) == 0:
@@ -189,9 +188,10 @@ class ArcBot(commands.Bot):
 
         await ctx.send(f"{ctx.author.name} has spanked {spanked} peepoShy")
 
-    @commands.cooldown(1, 10)
+    @commands.cooldown(1, 10, bucket=commands.cooldowns.Bucket.user)
     @commands.command(name="slap")
     async def slap(self, ctx: commands.Context):
+        
         if randint(0, 99) == 0:
             slapped = self.rare_spank_table[randint(0, len(self.rare_spank_table) - 1)]
         else:
@@ -222,182 +222,45 @@ class ArcBot(commands.Bot):
                 message = message + f"\n{timeout[0]}: {timeout[1]}"
             await ctx.send(message)
 
-    @commands.command(name="coins")
-    async def info_coins(self, ctx: commands.Context):
-        await ctx.reply(f"Available coin commands: !add_coins <user> <amount>, !get_coins <user>, !gamble <amount>, !top_coins")
-
-    @commands.command(name="add_coins")
-    async def add_coins(self, ctx: commands.Context):
+    @commands.command(name="cog")
+    async def toggle_cog(self, ctx: commands.Context):
         if not self.check_if_mod(ctx.author):
-            await ctx.reply(f"You're not a moderator x0r6ztGiggle")
+            await ctx.reply(f"You are not a moderator.")
             return
 
-        args = ctx.message.content.split(" ")[1:]
-        args[1] = args[1].lower()
-        args[1] = args[1].replace("k", "000")
-        args[1] = args[1].replace("m", "000000")
-        if len(args) < 2:
-            await ctx.send(f"Usage: !add_coins <user or all> <amount>")
-            return
-        try:
-            amount = int(args[1])
-        except ValueError:
-            await ctx.send(f"Invalid amount: {args[1]}")
-            return
-        except IndexError:
-            amount = 1
-        if args[0] == "all":
-            chatters_list = [chatter.name for chatter in list(ctx.chatters) if chatter.name not in known_bots]
-            self.db.add_coins(chatters_list, amount)
-            await ctx.send(f"Gave everyone {amount} coins")
-        else:
-            username = args[0].lower()
-            self.db.add_coins([username], amount)
-            await ctx.send(f"Gave {username} {amount} coins")
-
-    @routines.routine(minutes=5, wait_first=True)
-    async def add_coins_routine(self):
-        chatters_list = [chatter.name for chatter in list(chatters_cache) if chatter.name not in known_bots]
-        self.db.add_coins(chatters_list, 100)
-
-    @commands.command(name="get_coins")
-    async def get_coins(self, ctx: commands.Context):
-        args = ctx.message.content.split(" ")[1:]
-        if len(args) > 0:
-            user = args[0].lower()
-        else:
-            user = ctx.author.name
-
-        await ctx.send(f"{user} has {self.db.get_coins(user)} coins.")
-
-    @commands.command(name="top_coins")
-    async def top_coins(self, ctx: commands.Context):
-        top_coin_owners = self.db.get_top_coins()
-        top_coin_owners_string = ", ".join([str(row["username"] + ": " + str(row["val"])) for row in top_coin_owners])
-        await ctx.send(f"Top coin owners: {top_coin_owners_string}")
-
-    @commands.cooldown(rate=1, per=5)
-    @commands.command(name="gamble")
-    async def gamble_coins(self, ctx: commands.Context):
-        try:
-            desired_gambling_amount = ctx.message.content.split(" ")[1:][0]
-        except IndexError:
-            await ctx.send("No amount given, use !gamble <amount>")
-            return
-        current_amount = int(self.db.get_coins(ctx.author.name))
-        if current_amount == 0:
-            await ctx.send(f"{ctx.author.name} has no coins to gamble with!")
-            return
-
-        if "all" == desired_gambling_amount:
-            gambled_amount = current_amount
-        elif "%" in desired_gambling_amount:
-            try:
-                gambled_amount = float(desired_gambling_amount[:-1]) / 100
-            except ValueError:
-                await ctx.send(f"Invalid percentage amount: {desired_gambling_amount}")
-                return
-            gambled_amount = int(current_amount * gambled_amount)
-        else:
-            desired_gambling_amount = desired_gambling_amount.lower()
-            desired_gambling_amount = desired_gambling_amount.replace("k", "000")
-            desired_gambling_amount = desired_gambling_amount.replace("m", "000000")
-            try:
-                gambled_amount = int(desired_gambling_amount)
-            except ValueError:
-                await ctx.send(f"Invalid amount: {desired_gambling_amount}")
-                return
-        if current_amount < gambled_amount:
-                await ctx.send(f"You can not gamble {gambled_amount} coins, you only have {current_amount} coins")
-                return
-        elif gambled_amount < 0:
-                await ctx.send(f"You can not gamble a negative amount of coins.")
-                return
-
-        current_amount = current_amount - gambled_amount
-        gamble_outcome = randint(0, 100)
-        if gamble_outcome < 50:
-            gamble_result_message = f"{ctx.author.name} rolled a {gamble_outcome} and lost {gambled_amount} coins."
-            new_amount = current_amount
-        elif gamble_outcome == 69:
-            gamble_result_message = f"NICE BONUS!!! {ctx.author.name} rolled a {gamble_outcome} and got 4x their gamble back!."
-            new_amount = current_amount + gambled_amount * 4
-        elif gamble_outcome == 73:
-            gamble_result_message = f"LaughHard NO WAY BONUS LaughHard !!! {ctx.author.name} rolled a {gamble_outcome} and got 4x their gamble back!."
-            new_amount = current_amount + gambled_amount * 4
-        elif gamble_outcome == 100:
-            gamble_result_message = f"Pog BONUS Pog {ctx.author.name} rolled a {gamble_outcome} and got 4x their gamble back!."
-            new_amount = current_amount + gambled_amount * 4
-        else:
-            gamble_result_message = f"{ctx.author.name} rolled a {gamble_outcome} and got 2x their gamble back!."
-            new_amount = current_amount + gambled_amount * 2
-        await sleep(0.5)
-        await ctx.send(f"{gamble_result_message} {ctx.author.name} now has {new_amount} coins.")
-        self.db.update_coins(ctx.author.name, new_amount)
-
-    @commands.command(name="bet")
-    async def info_bet(self, ctx: commands.Context):
-        await ctx.reply("Type \"!place_bet <total_level>\" to guess at which total level arcReign's HCIM will die. Type \"!check_bet\" to check your bet.")
-
-
-    async def place_bet(self, username, bet, ctx):
-        try:
-            bet = int(bet)
-        except ValueError:
-            await ctx.reply(f"{bet} is not an integer.")
-            return
-        if bet < 32 or bet > 2277:
-            await ctx.reply(f"{bet} is not a valid total level.")
-            return
-        self.db.insert_hcim_bet(username, bet)
-        await ctx.reply(f"{username} has placed a bet! {bet}.")
-
-    @commands.command(name="place_bet")
-    async def place_hcim_bet(self, ctx: commands.Context):
-        username = ctx.author.name
-        current_bet = self.db.get_hcim_bet(username)
-        if current_bet:
-            await ctx.reply(f"{username} already has a bet: {current_bet} ask moderator if you would like your bet changed.")
-            return
         args = ctx.message.content.split(" ")[1:]
         if len(args) == 0:
-            await ctx.reply("Type \"!place_bet <total_level>\" to guess at which total level arcReign's HCIM will die.")
-            return
-        bet = args[0]
-        await self.place_bet(username, bet, ctx)
-
-    @commands.command(name="mod_place_bet")
-    async def mod_place_hcim_bet(self, ctx: commands.Context):
-        if not self.check_if_mod(ctx.author):
-            await ctx.reply(f"You're not a moderator x0r6ztGiggle")
+            await ctx.reply(f"Available cogs are: {', '.join([s for s in cogs.keys()])}")
             return
 
-        args = ctx.message.content.split(" ")[1:]
         if len(args) < 2:
-            await ctx.reply("Type \"!mod_place_bet <username> <total_level>\" to set a user's guess at which total level arcReign's HCIM will die.")
+            await ctx.reply(f"Usage: !cog <enable/disable> <cog_name>")
             return
-        username = args[0].lower()
-        bet = args[1]
-        await self.place_bet(username, bet, ctx)
 
-    @commands.command(name="check_bet")
-    async def check_hcim_bet(self, ctx: commands.Context):
-        username = ctx.author.name
-        bet = self.db.get_hcim_bet(username)
-        if not bet:
-            await ctx.reply(f"{username}'s has not placed a bet yet. Place a bet with \"!place_bet <total_level>\".")
-        else:
-            await ctx.reply(f"{username}'s bet is {bet}.")
+        cog_name = args[1]
+        if cog_name not in cogs.keys():
+            await ctx.reply(f"Cog '{cog_name}' not found, available cogs are: {', '.join([s for s in cogs.keys()])}")
+            return
 
-    @commands.command(name="sailing")
-    async def sailing(self, ctx: commands.Context):
-        if self.check_if_mod(ctx.author):
-            args = ctx.message.content.split(" ")[1:]
-            if len(args) > 1:
-                if args[0] == "enable" and "Sailing" not in bot.cogs:
-                    bot.add_cog(Sailing(bot))
-                elif args[1] == "disable" and "Sailing" in bot.cogs:
-                    bot.remove_cog("Sailing")
+        if args[0] == "enable":
+            if bot.get_cog(cog_name):
+                await ctx.reply(f"Cog '{cog_name}' is already enabled.")
+                return
+            else:
+                bot.add_cog(cogs[cog_name](self))
+                await ctx.reply(f"Cog '{cog_name}' enabled.")
+                return
+
+        if args[0] == "disable":
+            if not bot.get_cog(cog_name):
+                await ctx.reply(f"Cog '{cog_name}' is already disabled.")
+                return
+            else:
+                bot.remove_cog(cog_name)
+                await ctx.reply(f"Cog '{cog_name}' disabled.")
+                return
+
+        await ctx.reply(f"Usage: !cog <enable/disable> <cog_name>")
 
     #------------------------------------
     # CHANNEL POINT REDEMPTIONS

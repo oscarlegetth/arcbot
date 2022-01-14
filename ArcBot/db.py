@@ -1,8 +1,9 @@
 import sqlite3
+import os
 
 class DB():
     def __init__(self, ) -> None:
-        self.con = sqlite3.connect("records.sqlite3")
+        self.con = sqlite3.connect(os.environ["DATABASE_FILEPATH"])
         self.con.row_factory = sqlite3.Row
         self.cur = self.con.cursor()
         # ensure that the database is set up correctly
