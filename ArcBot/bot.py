@@ -121,7 +121,10 @@ class ArcBot(commands.Bot):
 
             # respond to people calling the bot stupid
             if message[0:10].lower() == "stupid bot":
-                self.send_message(f"{ctx.author.name} is a stupid human")
+                self.send_message(f"{ctx.author.name} is a stupid human 😡")
+
+            if message[0:8].lower() == "good bot":
+                self.send_message(f"{ctx.author.name} is a good human peepoShy")
 
             # respond to bastin
             if ctx.author.name.lower() == "bastin101" and randint(0, 3) == 0:

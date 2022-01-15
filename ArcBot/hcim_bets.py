@@ -9,7 +9,7 @@ class HCIM_bets(commands.Cog):
     async def bet(self, ctx: commands.Context):
         await ctx.reply("Type \"!place_bet <total_level>\" to guess at which total level arcReign's HCIM will die. Type \"!check_bet\" to check your bet.")
 
-    async def place_bet(self, username, bet, ctx):
+    async def set_user_bet(self, username, bet, ctx):
         try:
             bet = int(bet)
         except ValueError:
@@ -33,7 +33,7 @@ class HCIM_bets(commands.Cog):
             await ctx.reply("Type \"!place_bet <total_level>\" to guess at which total level arcReign's HCIM will die.")
             return
         bet = args[0]
-        await self.place_bet(username, bet, ctx)
+        await self.set_user_bet(username, bet, ctx)
 
     @commands.command(name="mod_place_bet")
     async def mod_place_bet(self, ctx: commands.Context):
@@ -47,7 +47,7 @@ class HCIM_bets(commands.Cog):
             return
         username = args[0].lower()
         bet = args[1]
-        await self.place_bet(username, bet, ctx)
+        await self.set_user_bet(username, bet, ctx)
 
     @commands.command(name="check_bet")
     async def check_bet(self, ctx: commands.Context):
