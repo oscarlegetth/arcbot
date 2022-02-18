@@ -164,23 +164,8 @@ class ArcBot(commands.Bot):
     async def random_item(self, ctx: commands.Context):
         await ctx.send(get_random_item())
 
-    # @commands.command(name="random_user")
-    # async def random_user(self, ctx: commands.Context):
-    #     chatters_list = [chatter.name for chatter in list(ctx.chatters) if chatter.name not in known_bots]
-    #     await ctx.send(chatters_list[randint(0, len(chatters_list)) - 1])
-
-    # @commands.cooldown(1, 10)
-    # @commands.command(name="spin")
-    # async def spin_the_wheel(self, ctx: commands.Context):
-    #     username = ctx.author.name
-    #     result = wheel.spin(username)
-    #     for s in result:
-    #         await sleep(1)
-    #         await ctx.send(s)
-
     rare_spank_table = ["WooxSolo", "Odablock", "Framed", "J1mmy", "Faux", "Coxie", "Mmorpg", "Real_Matk", "SkillSpecs", "Mr_Mammal", "Alfie", "Roidie", "itswill", "SkiddlerRS", "Dino_xx", "JagexModAsh", "FBI_Survelliance_Van_381b"]
 
-    @commands.cooldown(1, 10, bucket=commands.cooldowns.Bucket.user)
     @commands.command(name="spank")
     async def spank(self, ctx: commands.Context):
         if randint(0, 99) == 0:
@@ -190,7 +175,6 @@ class ArcBot(commands.Bot):
 
         await ctx.send(f"{ctx.author.name} has spanked {spanked} peepoShy")
 
-    @commands.cooldown(1, 10, bucket=commands.cooldowns.Bucket.user)
     @commands.command(name="slap")
     async def slap(self, ctx: commands.Context):
         
@@ -270,20 +254,36 @@ class ArcBot(commands.Bot):
 
     @pubsub_client.event()
     async def event_pubsub_channel_points(event: pubsub.PubSubChannelPointsMessage):
-        title = event.reward.title
-        if title == "Add a seaman to the arc":
+        title = event.reward.title.lower()
+        if title == "add a seaman to the arc":
             new_amount = bot.db.insert_seaman(1)
             bot.send_message(f"Thank you for adding more seamen to the arc. The arc now has {new_amount} seamen peepoMayo")
             
-        elif title == "Spin The arcWheel":
+        elif title == "spin The arcwheel":
             username = event.user.name
             result = wheel.spin(username)
             for s in result:
                 await sleep(1)
                 bot.send_message(s)
 
-        elif title == "Buy ship and crew":
+        elif title == "buy ship and crew":
             pass
+
+        elif title == "rng timeout":
+            target = event.input.split()[0].lower()
+            if target[0] == '@':
+                target = target[1:]
+            bot.send_message(f"{event.user.name} is trying to timeout {target} PauseChamp")
+            await sleep(2)
+            if randint(0, 1) == 0:
+                bot.send_message(f"{target} has been harvested for 5 minutes x0r6ztGiggle")
+                bot.send_message(f"/timeout {target} 5m")
+            else:
+                if randint(0, 1) == 0:
+                    bot.send_message(f"{target} managed to parry the timeout! {event.user.name} has been timed out for 5 minutes instead.")
+                    bot.send_message(f"/timeout {event.user.name} 5m")
+                else:
+                    bot.send_message(f"{target} gets to live to see another day")
 
 if __name__ == "__main__":
     bot = ArcBot()

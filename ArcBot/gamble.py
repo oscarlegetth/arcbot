@@ -63,7 +63,7 @@ class Gamble(commands.Cog):
         top_coin_owners_string = ", ".join([str(row["username"] + ": " + str(row["val"])) for row in top_coin_owners])
         await ctx.send(f"Top coin owners: {top_coin_owners_string}")
 
-    @commands.cooldown(1, 5, commands.cooldowns.Bucket.user)
+    #@commands.cooldown(1, 5, commands.cooldowns.Bucket.user)
     @commands.command(name="gamble")
     async def gamble(self, ctx: commands.Context):
         try:
