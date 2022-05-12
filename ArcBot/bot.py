@@ -1,8 +1,10 @@
 import os
 from asyncio.tasks import sleep
+from threading import Timer
 from xml.dom.minidom import CharacterData
 from dotenv import load_dotenv
 from random import randint
+import dotenv
 
 import pkg_resources
 
@@ -11,6 +13,7 @@ import twitchio
 from twitchio.ext import commands, pubsub
 from twitchio.message import Message
 import asyncio
+import requests
 
 from sailing import Sailing
 from hcim_bets import HCIM_bets
@@ -64,20 +67,62 @@ class ArcBot(commands.Bot):
 
 
     async def run_pubsub(self):
+        await self.connect_pubsub()
+        if pubsub_client._connection.is_alive:
+            print("Connected to pubsub server")
+        else:
+            print("Failed to connect to pubsub server, attempting to refresh token")
+            await self.refresh_pubsub_token()
+            await self.connect_pubsub()
+            if len(pubsub_client._connection.is_alive):
+                print("Failed to connect to pubsub server after token refresh, aborting pubsub connection")
+                return
+
+
+    async def connect_pubsub(self):
         topics = [
             pubsub.channel_points(os.environ['PUBSUB_ACCESS_TOKEN'])[int(os.environ['CHANNEL_ID'])]
         ]
         await pubsub_client.pubsub.subscribe_topics(topics)
         await pubsub_client.connect()
+            
 
     async def event_ready(self):
         """Called once when the bot goes online."""
-        asyncio.create_task(self.run_pubsub())
+        await asyncio.create_task(self.run_pubsub())
         version = pkg_resources.get_distribution('ArcBot').version
         message = f"{os.environ['BOT_NICK']} v{version} is online!"
         await asyncio.sleep(1)
         print(message)
         self.send_message(message)
+
+    async def refresh_pubsub_token(self):
+        # send http request for a new token
+        url = "https://id.twitch.tv/oauth2/token"
+        payload = f"grant_type=refresh_token&refresh_token={os.environ['PUBSUB_REFRESH_TOKEN']}&client_id={os.environ['CLIENT_ID']}&client_secret={os.environ['CLIENT_SECRET']}"
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
+        response = requests.post(url, data=payload, headers=headers)
+        if response.status_code == 200:
+            print("Successfully refreshed pubsub access token")
+        else:
+            print(f"Could not refresh pubsub access token. Response code: {response.status_code}")
+            return
+
+        new_access_token = response.json()['access_token']
+        expires_in = int(response.json()['expires_in'])
+        refresh_token = response.json()['refresh_token']
+
+        os.environ['PUBSUB_ACCESS_TOKEN'] = new_access_token
+        dotenv.set_key(dotenv_path, 'PUBSUB_ACCESS_TOKEN', os.environ['PUBSUB_ACCESS_TOKEN'])
+        os.environ['PUBSUB_REFRESH_TOKEN'] = refresh_token
+        dotenv.set_key(dotenv_path, 'PUBSUB_REFRESH_TOKEN', os.environ['PUBSUB_REFRESH_TOKEN'])
+
+        t = Timer(expires_in - 15, self.refresh_and_connect_to_pubsub)
+        t.start()
+
+    async def refresh_and_connect_to_pubsub(self):
+        await self.refresh_pubsub_token()
+        await self.connect_pubsub()
 
 
     #------------------------------------
@@ -219,13 +264,17 @@ class ArcBot(commands.Bot):
             await ctx.reply(f"Available cogs are: {', '.join([s for s in cogs.keys()])}")
             return
 
+        if args[0] == "enabled":
+            await ctx.reply(f"Currently enabled cogs are: {', '.join(bot._cogs.keys())}")
+            return
+
         if len(args) < 2:
-            await ctx.reply(f"Usage: !cog <enable/disable> <cog_name>")
+            await ctx.reply(f"Usage: '!cog <enable/disable> <cog_name>' to enable/disable cogs, '!cog enabled' to see currently enabled cogs")
             return
 
         cog_name = args[1]
         if cog_name not in cogs.keys():
-            await ctx.reply(f"Cog '{cog_name}' not found, available cogs are: {', '.join([s for s in cogs.keys()])}")
+            await ctx.reply(f"Cog '{cog_name}' not found, available cogs are: {', '.join(cogs.keys())}")
             return
 
         if args[0] == "enable":
@@ -284,6 +333,10 @@ class ArcBot(commands.Bot):
                     bot.send_message(f"/timeout {event.user.name} 5m")
                 else:
                     bot.send_message(f"{target} gets to live to see another day")
+        
+        elif title == "song request":
+            bot.send_message("song requested pogg")
+
 
 if __name__ == "__main__":
     bot = ArcBot()
