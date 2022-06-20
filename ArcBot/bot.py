@@ -52,11 +52,26 @@ def get_random_items(i):
 class ArcBot(commands.Bot):
 
     def __init__(self):
-        super().__init__(token=os.environ['TMI_TOKEN'], 
+        validate_response = self.validate_token('ACCESS_TOKEN')
+        if "expires_in" not in validate_response:
+            expires_in = 0
+        else:
+            expires_in = int(validate_response["expires_in"])
+
+        if expires_in == 0:
+            self.refresh_token("ACCESS_TOKEN", "REFRESH_TOKEN")
+
+        # asyncio.run(self.refresh_and_connect_access_token(delay=expires_in - 15))
+        # print(f"set up timer to refresh access token in {expires_in} seconds")
+
+        print(f"Creating bot instance")
+        super().__init__(token=os.environ['ACCESS_TOKEN'], 
         client_id=os.environ['CLIENT_ID'], 
         nick=os.environ['BOT_NICK'], 
         prefix=os.environ['BOT_PREFIX'], 
         initial_channels=[os.environ['CHANNEL']])
+        print(f"Connected to twitch API")
+            
         self.db = db.DB()
         wheel.db = self.db
         self.chatters_cache = []
@@ -64,20 +79,32 @@ class ArcBot(commands.Bot):
         
         for default_cog in os.environ["DEFAULT_COGS"].split(" "):
             self.add_cog(cogs[default_cog](self))
-
+        print(f"Successfully added cogs")
 
     async def run_pubsub(self):
-        await self.connect_pubsub()
+        validate_response = self.validate_token("PUBSUB_ACCESS_TOKEN")
+        if "expires_in" not in validate_response:
+            expires_in = 0
+        else:
+            expires_in = int(validate_response["expires_in"])
+        t = Timer(expires_in - 15, self.refresh_and_connect_to_pubsub)
+        t.start()
+        # await self.refresh_and_connect_to_pubsub(delay=expires_in - 15)
+        print(f"set up timer to refresh pubsub access token in {expires_in} seconds")
+
+        try:
+            await self.connect_pubsub()
+        except (twitchio.errors.AuthenticationError):
+            print("Failed to connect to pubsub server, attempting to refresh token")
+            await self.refresh_token("PUBSUB_ACCESS_TOKEN", "PUBSUB_REFRESH_TOKEN")
+            try:
+                await self.connect_pubsub()
+            except (twitchio.errors.AuthenticationError):
+                print("Failed to connect to pubsub server after token refresh, aborting pubsub connection")
         if pubsub_client._connection.is_alive:
             print("Connected to pubsub server")
         else:
-            print("Failed to connect to pubsub server, attempting to refresh token")
-            await self.refresh_pubsub_token()
-            await self.connect_pubsub()
-            if len(pubsub_client._connection.is_alive):
-                print("Failed to connect to pubsub server after token refresh, aborting pubsub connection")
-                return
-
+            print("Failed to connect to pubsub server, but token was valid?!")
 
     async def connect_pubsub(self):
         topics = [
@@ -85,10 +112,10 @@ class ArcBot(commands.Bot):
         ]
         await pubsub_client.pubsub.subscribe_topics(topics)
         await pubsub_client.connect()
-            
 
     async def event_ready(self):
         """Called once when the bot goes online."""
+        print(f"event_ready called")
         await asyncio.create_task(self.run_pubsub())
         version = pkg_resources.get_distribution('ArcBot').version
         message = f"{os.environ['BOT_NICK']} v{version} is online!"
@@ -96,34 +123,54 @@ class ArcBot(commands.Bot):
         print(message)
         self.send_message(message)
 
-    async def refresh_pubsub_token(self):
+    def refresh_token(self, token_key : str, refresh_token_key : str):
         # send http request for a new token
         url = "https://id.twitch.tv/oauth2/token"
-        payload = f"grant_type=refresh_token&refresh_token={os.environ['PUBSUB_REFRESH_TOKEN']}&client_id={os.environ['CLIENT_ID']}&client_secret={os.environ['CLIENT_SECRET']}"
+        payload = f"grant_type=refresh_token&refresh_token={os.environ[refresh_token_key]}&client_id={os.environ['CLIENT_ID']}&client_secret={os.environ['CLIENT_SECRET']}"
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
         response = requests.post(url, data=payload, headers=headers)
         if response.status_code == 200:
-            print("Successfully refreshed pubsub access token")
+            print(f"Successfully refreshed {token_key}")
         else:
-            print(f"Could not refresh pubsub access token. Response code: {response.status_code}")
+            print(f"Could not refresh {token_key}. Response code: {response.status_code}")
+            print(f"Full response: {response.text}")
             return
 
         new_access_token = response.json()['access_token']
         expires_in = int(response.json()['expires_in'])
         refresh_token = response.json()['refresh_token']
 
-        os.environ['PUBSUB_ACCESS_TOKEN'] = new_access_token
-        dotenv.set_key(dotenv_path, 'PUBSUB_ACCESS_TOKEN', os.environ['PUBSUB_ACCESS_TOKEN'])
-        os.environ['PUBSUB_REFRESH_TOKEN'] = refresh_token
-        dotenv.set_key(dotenv_path, 'PUBSUB_REFRESH_TOKEN', os.environ['PUBSUB_REFRESH_TOKEN'])
+        os.environ[token_key] = new_access_token
+        dotenv.set_key(dotenv_path, token_key, os.environ[token_key])
+        os.environ[refresh_token_key] = refresh_token
+        dotenv.set_key(dotenv_path, refresh_token_key, os.environ[refresh_token_key])
 
-        t = Timer(expires_in - 15, self.refresh_and_connect_to_pubsub)
-        t.start()
+        return expires_in
 
-    async def refresh_and_connect_to_pubsub(self):
-        await self.refresh_pubsub_token()
+    def validate_token(self, token_key : str):
+        print(f"Validating {token_key}")
+        url = "https://id.twitch.tv/oauth2/validate"
+        headers = {"Authorization" : f"Bearer {os.environ[token_key].replace('oauth:', '')}"}
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            print(f"Successfully validated {token_key}. HTTP 200.")
+        return response.json()
+
+    async def refresh_and_connect_to_pubsub(self, delay : int = 0):
+        await asyncio.sleep(delay)
+        expires_in = await self.refresh_token("PUBSUB_ACCESS_TOKEN", "PUBSUB_REFRESH_TOKEN")
         await self.connect_pubsub()
+        asyncio.create_task(self.refresh_and_connect_to_pubsub(delay=expires_in - 15))
 
+    async def refresh_and_connect_access_token(self, delay : int = 0):
+        await asyncio.sleep(delay)
+        expires_in = await self.refresh_token("ACCESS_TOKEN", "REFRESH_TOKEN")
+        # self._connection._token = os.environ["ACCESS_TOKEN"]
+
+        _ = os.environ["ACCESS_TOKEN"]
+         
+        await self.connect()
+        asyncio.create_task(self.refresh_and_connect_access_token(delay=expires_in - 15))
 
     #------------------------------------
     # HELPER FUNCTIONS

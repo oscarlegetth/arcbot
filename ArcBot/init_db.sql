@@ -30,3 +30,14 @@ CREATE TABLE IF NOT EXISTS hcim_bets(
     username TEXT PRIMARY KEY,
     bet INT
 );
+
+CREATE TABLE IF NOT EXISTS ships(
+    username TEXT PRIMARY KEY,
+    hull INT,
+    cannons INT,
+    sails INT,
+    cargo_current_amount INT,
+    cargo_capacity INT,
+    crew_current_amount INT,
+    crew_capacity INT
+);

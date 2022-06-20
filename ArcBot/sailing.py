@@ -8,6 +8,7 @@ class Sailing(commands.Cog):
     @commands.command(name="ship")
     async def ship_stats(self, ctx: commands.Context):
         pass
+        
 
     @commands.command(name="scout")
     async def ship_scout(self, ctx: commands.Context):
@@ -17,7 +18,7 @@ class Sailing(commands.Cog):
     async def ship_upgrade(self, ctx: commands.Context):
         pass
 
-    @commands.command(name="sail")
+    @commands.command(name="setsail")
     async def ship_sail(self, ctx: commands.Context):
         pass
 

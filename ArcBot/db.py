@@ -1,6 +1,7 @@
 import sqlite3
 import os
 
+
 class DB():
     def __init__(self, ) -> None:
         self.con = sqlite3.connect(os.environ["DATABASE_FILEPATH"])
@@ -219,3 +220,19 @@ class DB():
             return fetched["bet"]
 
 
+    #sailing
+    def get_ship_stats(self, username):
+        self.cur.execute("SELECT * \
+            FROM ships \
+            WHERE username = ?", (username,))
+
+        return self.cur.fetchone()
+
+    def insert_ship(self, username, stats):
+        # this can surely be done in some better way, but oh well
+        self.cur.execute("INSERT INTO hcim_bets(username, hp, hull, cannons, sails, cargo_current_amount, cargo_capacity, crew_current_amount, crew_capacity) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) \
+            ON CONFLICT(username) DO UPDATE SET hp = ?, hull = ?, cannons = ?, sails = ?, cargo_current_amount = ?, cargo_capacity = ?, crew_current_amount = ?, crew_capacity  = ? \
+            WHERE username = ?", (username, stats.hp, stats.hull, stats.cannons, stats.sails, stats.cargo_current_amount, stats.cargo_capacity, stats.crew_current_amount, stats.crew_capacity, 
+            stats.hp, stats.hull, stats.cannons, stats.sails, stats.cargo_current_amount, stats.cargo_capacity, stats.crew_current_amount, stats.crew_capacity, stats.bet, stats.username))
+        
+        self.con.commit()

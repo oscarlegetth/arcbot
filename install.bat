@@ -1,4 +1,8 @@
+set root=C:\Users\oscar\miniconda3
+call %root%\Scripts\activate.bat %root%
+
 call conda activate arcbot
 
-pip install -U .
+call pip install -U .
 
+pause
