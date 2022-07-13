@@ -35,7 +35,7 @@ options = {
 
 class Wheel():
 
-    def __init__(self) -> None:
+    def __init__(self):
         self.db = None
 
     def spin(self, username):

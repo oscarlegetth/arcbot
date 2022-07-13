@@ -1,7 +1,6 @@
 import os
 from asyncio.tasks import sleep
 from threading import Timer
-from xml.dom.minidom import CharacterData
 from dotenv import load_dotenv
 from random import randint
 import dotenv
@@ -10,7 +9,7 @@ import pkg_resources
 
 from osrsbox import items_api
 import twitchio
-from twitchio.ext import commands, pubsub
+from twitchio.ext import commands, pubsub, routines
 from twitchio.message import Message
 import asyncio
 import requests
@@ -24,7 +23,7 @@ import wheel
 import sys
 
 # pip packages: twitchio, osrsbox, websocket, asyncio, dotenv
-# mostly code from
+# made with code from
 # https://dev.to/ninjabunny9000/let-s-make-a-twitch-bot-with-python-2nd8
 
 # global objects
@@ -37,9 +36,12 @@ else:
 load_dotenv(dotenv_path=dotenv_path)
 items = items_api.load()
 wheel = wheel.Wheel()
+sailing = Sailing()
 pubsub_client = twitchio.Client(token=os.environ['PUBSUB_ACCESS_TOKEN'])
 pubsub_client.pubsub = pubsub.PubSubPool(pubsub_client)
 cogs = {"Sailing" : Sailing, "Gamble" : Gamble, "HCIM_bets" : HCIM_bets}
+stream_live = False
+running_routines : dict[str, routines.Routine] = {}
 
 # helper methods
 
@@ -66,16 +68,16 @@ class ArcBot(commands.Bot):
 
         print(f"Creating bot instance")
         super().__init__(token=os.environ['ACCESS_TOKEN'], 
-        client_id=os.environ['CLIENT_ID'], 
-        nick=os.environ['BOT_NICK'], 
-        prefix=os.environ['BOT_PREFIX'], 
-        initial_channels=[os.environ['CHANNEL']])
+            client_id=os.environ['CLIENT_ID'], 
+            nick=os.environ['BOT_NICK'], 
+            prefix=os.environ['BOT_PREFIX'], 
+            initial_channels=[os.environ['CHANNEL']])
         print(f"Connected to twitch API")
-            
+
         self.db = db.DB()
         wheel.db = self.db
         self.chatters_cache = []
-        self.known_bots = ["arcbot73", "creatisbot", "nightbot", "anotherttvviewer", "streamlabs", "kaxips06"]
+        self.known_bots = ["arcbot73", "creatisbot", "nightbot", "anotherttvviewer", "streamlabs", "kaxips06", "7tvapp"]
         
         for default_cog in os.environ["DEFAULT_COGS"].split(" "):
             self.add_cog(cogs[default_cog](self))
@@ -172,6 +174,13 @@ class ArcBot(commands.Bot):
         await self.connect()
         asyncio.create_task(self.refresh_and_connect_access_token(delay=expires_in - 15))
 
+    @commands.event
+    async def event_command_error(self, context: commands.Context, error: Exception) -> None:
+        if error is twitchio.ext.commands.errors.CommandNotFound:
+            return None
+        else:
+            return await super().event_command_error(context, error)
+
     #------------------------------------
     # HELPER FUNCTIONS
     #------------------------------------
@@ -191,6 +200,19 @@ class ArcBot(commands.Bot):
 
     def check_if_mod(self, user):
         return "moderator" in user.badges or "broadcaster" in user.badges
+
+    def check_if_stream_live(self):
+        url = "https://api.twitch.tv/helix/streams"
+        payload = f"user_login={os.environ['CHANNEL']}"
+        headers = {"Authorization": f"Bearer {os.environ['ACCESS_TOKEN']}",
+            "Client-Id": f"{os.environ['CLIENT_ID']}"}
+        response = requests.post(url, data=payload, headers=headers)
+        json = response.json()
+        if len(json["data"]) > 0:
+            return json["data"][0]["type"] == "live"
+        return False
+
+
 
     #------------------------------------
     # NON-COMMANDS
@@ -362,9 +384,6 @@ class ArcBot(commands.Bot):
                 await sleep(1)
                 bot.send_message(s)
 
-        elif title == "buy ship and crew":
-            pass
-
         elif title == "rng timeout":
             target = event.input.split()[0].lower()
             if target[0] == '@':
@@ -381,8 +400,26 @@ class ArcBot(commands.Bot):
                 else:
                     bot.send_message(f"{target} gets to live to see another day")
         
-        elif title == "song request":
-            bot.send_message("song requested pogg")
+        # elif title == "song request":
+        #     bot.send_message("song requested pogg")
+
+    #------------------------------------
+    # ROUTINES
+    #------------------------------------
+
+    @routines.routine(minutes=10)
+    async def check_if_stream_live_routine(self):
+        if self.check_if_stream_live():
+            if self.check_sailing.__name__ not in running_routines:
+                self.check_sailing.start()
+        else:
+            for routine in running_routines.values():
+                routine.stop()
+
+    @routines.routine(seconds=10)
+    async def check_sailing(self):
+        if "Sailing" in bot.get_cog.keys():
+            sailing.update()
 
 
 if __name__ == "__main__":
