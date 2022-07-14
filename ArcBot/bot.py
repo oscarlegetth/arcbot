@@ -76,6 +76,8 @@ class ArcBot(commands.Bot):
 
         self.db = db.DB()
         wheel.db = self.db
+        sailing.db = self.db
+        sailing.bot = self
         self.chatters_cache = []
         self.known_bots = ["arcbot73", "creatisbot", "nightbot", "anotherttvviewer", "streamlabs", "kaxips06", "7tvapp"]
         
@@ -174,7 +176,6 @@ class ArcBot(commands.Bot):
         await self.connect()
         asyncio.create_task(self.refresh_and_connect_access_token(delay=expires_in - 15))
 
-    @commands.event
     async def event_command_error(self, context: commands.Context, error: Exception) -> None:
         if error is twitchio.ext.commands.errors.CommandNotFound:
             return None

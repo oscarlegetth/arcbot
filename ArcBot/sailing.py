@@ -2,11 +2,11 @@ from random import random
 from time import time
 from twitchio.ext import commands
 
-from ArcBot.ship import Ship
+from ship import Ship
 
 class Sailing(commands.Cog):
 
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: commands.Bot = None):
         self.bot = bot
         self.db = None
         self.current_ships_sailing : dict[str, Ship] = {}
