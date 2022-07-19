@@ -6,4 +6,4 @@ current_task.txt
 __pycache__
 ArcBot/ArcBot.egg-info
 ArcBot.egg-info
-records.sqlite3
+*.sqlite3
