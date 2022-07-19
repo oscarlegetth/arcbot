@@ -1,3 +1,5 @@
+from http import client
+from multiprocessing.connection import Client
 import os
 from asyncio.tasks import sleep
 from threading import Timer
@@ -78,6 +80,11 @@ class ArcBot(commands.Bot):
         wheel.db = self.db
         sailing.db = self.db
         sailing.bot = self
+        self.arcbot_commands = self.db.get_all_commands()
+        if not self.arcbot_commands:
+            self.arcbot_commands = {}
+        else:
+            print(f"Loaded {len(self.arcbot_commands)} command(s) from database")
         self.chatters_cache = []
         self.known_bots = ["arcbot73", "creatisbot", "nightbot", "anotherttvviewer", "streamlabs", "kaxips06", "7tvapp"]
         
@@ -91,7 +98,7 @@ class ArcBot(commands.Bot):
             expires_in = 0
         else:
             expires_in = int(validate_response["expires_in"])
-        t = Timer(expires_in - 15, self.refresh_and_connect_to_pubsub)
+        t = Timer(expires_in - 15, asyncio.create_task(self.refresh_and_connect_to_pubsub()))
         t.start()
         # await self.refresh_and_connect_to_pubsub(delay=expires_in - 15)
         print(f"set up timer to refresh pubsub access token in {expires_in} seconds")
@@ -148,7 +155,7 @@ class ArcBot(commands.Bot):
         dotenv.set_key(dotenv_path, token_key, os.environ[token_key])
         os.environ[refresh_token_key] = refresh_token
         dotenv.set_key(dotenv_path, refresh_token_key, os.environ[refresh_token_key])
-
+        load_dotenv()
         return expires_in
 
     def validate_token(self, token_key : str):
@@ -177,10 +184,10 @@ class ArcBot(commands.Bot):
         asyncio.create_task(self.refresh_and_connect_access_token(delay=expires_in - 15))
 
     async def event_command_error(self, context: commands.Context, error: Exception) -> None:
-        if error is twitchio.ext.commands.errors.CommandNotFound:
+        if type(error) is twitchio.ext.commands.errors.CommandNotFound:
             return None
         else:
-            return await super().event_command_error(context, error)
+            await super().event_command_error(context, error)
 
     #------------------------------------
     # HELPER FUNCTIONS
@@ -230,21 +237,27 @@ class ArcBot(commands.Bot):
 
             ctx.content = self.remove_7tv_chars(ctx.content)
             message = self.remove_7tv_chars(ctx.content)
+            lower_message = message.lower()
             # respond to messages ending with "er?"
-            if message[-3:] == "er?" and randint(0, 9) == 0:
+            if message[-3:] == "er?" and (randint(0, 9) == 0 or "broadcaster" in ctx.author.badges):
                 self.send_message(f"{message.split()[-1]} I hardly know her!!! LaughHard")
 
             # respond to people calling the bot stupid
-            if message[0:10].lower() == "stupid bot":
+            if lower_message[0:10] == "stupid bot":
                 self.send_message(f"{ctx.author.name} is a stupid human 😡")
 
-            if message[0:8].lower() == "good bot":
+            if lower_message[0:8] == "good bot":
                 self.send_message(f"{ctx.author.name} is a good human peepoShy")
 
             # respond to bastin
             if ctx.author.name.lower() == "bastin101" and randint(0, 3) == 0:
                 random_number = randint(0, 101)
                 self.send_message(f"bastin{random_number}+{101 - random_number} KEKW")
+
+            # respond to commands in db
+            command_name = lower_message.split(" ", 1)[0]
+            if command_name in self.arcbot_commands:
+                self.send_message(self.arcbot_commands[command_name])
 
         else:
             print(f"Unexpected context encountered. Type: {type(ctx)} str: {str(ctx)}")
@@ -367,6 +380,36 @@ class ArcBot(commands.Bot):
 
         await ctx.reply(f"Usage: !cog <enable/disable> <cog_name>")
 
+    @commands.command(name="addarccom")
+    async def add_arcbot_command(self, ctx: commands.Context):
+        args = ctx.message.content.split(" ", 2)
+        if len(args) < 3:
+            await ctx.reply(f"Usage: !{args[0]} [command name] [command output]")
+            return
+        command_name = args[1]
+        command_output = args[2]
+        self.db.update_arc_command(command_name, command_output)
+        self.arcbot_commands[command_name] = command_output
+        await ctx.reply(f"Command successfully added")
+
+    @commands.command(name="editarccom")
+    async def edit_arcbot_command(self, ctx: commands.Context):
+        await self.add_arcbot_command(ctx)
+
+    @commands.command(name="delarccom")
+    async def delete_arcbot_command(self, ctx: commands.Context):
+        args = ctx.message.content.split(" ", 1)
+        command_name = args[1]
+        if len(args) < 2:
+            await ctx.reply(f"Usage: !delarccom [command name]")
+            return
+        elif command_name in self.arcbot_commands:
+            self.db.delete_arc_command(command_name)
+            del self.arcbot_commands[command_name]
+            await ctx.reply(f"Command successfully deleted")
+        else:
+            await ctx.reply(f"Command {command_name} is not a command")
+
     #------------------------------------
     # CHANNEL POINT REDEMPTIONS
     #------------------------------------
@@ -378,7 +421,7 @@ class ArcBot(commands.Bot):
             new_amount = bot.db.insert_seaman(1)
             bot.send_message(f"Thank you for adding more seamen to the arc. The arc now has {new_amount} seamen peepoMayo")
             
-        elif title == "spin The arcwheel":
+        elif title == "spin the arcwheel":
             username = event.user.name
             result = wheel.spin(username)
             for s in result:

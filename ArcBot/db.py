@@ -1,3 +1,4 @@
+from code import compile_command
 import sqlite3
 import os
 
@@ -137,6 +138,42 @@ class DB():
                 VALUES (?, ?)", (username, time))
 
         self.con.commit()
+
+    # arc commands
+    def get_arc_command(self, command_name):
+        self.cur.execute("SELECT * \
+            FROM commands \
+            WHERE command_name = ?", (command_name,))
+        fetched = self.cur.fetchone()
+        if not fetched:
+            return None
+        else:
+            return fetched["command_output"]
+
+    def update_arc_command(self, command_name, command_output):
+        self.cur.execute("INSERT INTO commands(command_name, command_output) VALUES (?, ?) \
+            ON CONFLICT(command_name) DO UPDATE SET command_output = ? \
+            WHERE command_name = ?", (command_name, command_output, command_output, command_name))
+        self.con.commit()
+
+    def delete_arc_command(self, command_name):
+        self.cur.execute("DELETE FROM commands \
+            WHERE command_name = ?", (command_name,))
+        self.con.commit()
+
+    def get_all_commands(self):
+        self.cur.execute("SELECT * \
+            FROM commands")
+        fetched = self.cur.fetchall()
+        if not fetched:
+            return None
+        else:
+            result = {}
+            for row in fetched:
+                result[row["command_name"]] = row["command_output"]
+            return result
+
+
     
     # seaman
 
