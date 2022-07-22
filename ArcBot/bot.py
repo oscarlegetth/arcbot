@@ -1,6 +1,7 @@
 from http import client
 from multiprocessing.connection import Client
 import os
+import re
 from asyncio.tasks import sleep
 from threading import Timer
 from dotenv import load_dotenv
@@ -257,7 +258,8 @@ class ArcBot(commands.Bot):
             # respond to commands in db
             command_name = lower_message.split(" ", 1)[0]
             if command_name in self.arcbot_commands:
-                self.send_message(self.arcbot_commands[command_name])
+                output = self.process_arcbot_command(ctx, self.arcbot_commands[command_name])
+                self.send_message(output)
 
         else:
             print(f"Unexpected context encountered. Type: {type(ctx)} str: {str(ctx)}")
@@ -409,6 +411,33 @@ class ArcBot(commands.Bot):
             await ctx.reply(f"Command successfully deleted")
         else:
             await ctx.reply(f"Command {command_name} is not a command")
+
+    @commands.command(name="helparccom")
+    async def show_help_arcbot_command(self, ctx: commands.Context):
+        await ctx.reply(f"Use !addarccom to add or edit a command. !delarccom deletes a command. \
+            Special strings: $(user) user who uses command, \
+            $(target) first word after command, \
+            $(random user) a random chatter, \
+            $(random) a random number 0-100, \
+            $(random x) a random number 0-x.")
+
+    def process_arcbot_command(self, ctx: commands.Context, command_output: str) -> str:
+        """
+        Replaces all occurances of '$(user)' with the name of the user who issued the command \n
+        Replaces all occurances of '$(target)' with whatever first word is written after the name of the command \n
+        Replaces all occurances of '$(random user)' with a random user from the chatters_cache \n
+        Replaces all occurances of '$(random)' with a random number between 0-100 \n
+        Replaces all occurances of '$(random x)' with a random number between 0-x \n
+        """
+        def randint_replace(matchobj):
+            return str(randint(0, int(matchobj.groups()[1])))
+
+        command_output.replace("$(user)", ctx.author.name)
+        command_output.replace("$(target)", ctx.message.content.split(" ", 2)[1])
+        command_output.replace("$(random user)", self.get_random_user())
+        command_output.replace("$(random)", str(randint(0, 100)))
+        command_output = re.sub(r"\$\((random) (\d+)\)", randint_replace, command_output)
+        return command_output
 
     #------------------------------------
     # CHANNEL POINT REDEMPTIONS
