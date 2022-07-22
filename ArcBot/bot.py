@@ -99,6 +99,7 @@ class ArcBot(commands.Bot):
             expires_in = 0
         else:
             expires_in = int(validate_response["expires_in"])
+        await asyncio.sleep(1)
         t = Timer(expires_in - 15, asyncio.create_task(self.refresh_and_connect_to_pubsub()))
         t.start()
         # await self.refresh_and_connect_to_pubsub(delay=expires_in - 15)
@@ -109,6 +110,7 @@ class ArcBot(commands.Bot):
         except (twitchio.errors.AuthenticationError):
             print("Failed to connect to pubsub server, attempting to refresh token")
             await self.refresh_token("PUBSUB_ACCESS_TOKEN", "PUBSUB_REFRESH_TOKEN")
+            await asyncio.sleep(1)
             try:
                 await self.connect_pubsub()
             except (twitchio.errors.AuthenticationError):
@@ -131,7 +133,6 @@ class ArcBot(commands.Bot):
         await asyncio.create_task(self.run_pubsub())
         version = pkg_resources.get_distribution('ArcBot').version
         message = f"{os.environ['BOT_NICK']} v{version} is online!"
-        await asyncio.sleep(1)
         print(message)
         self.send_message(message)
 
@@ -433,7 +434,11 @@ class ArcBot(commands.Bot):
             return str(randint(0, int(matchobj.groups()[1])))
 
         command_output.replace("$(user)", ctx.author.name)
-        command_output.replace("$(target)", ctx.message.content.split(" ", 2)[1])
+        args = ctx.message.content.split(" ", 2)
+        if len(args) >= 2:
+            command_output = command_output.replace("$(target)", args[1])
+        else:
+            command_output.replace("$(target)", ctx.message.content.split(" ", 2)[1])
         command_output.replace("$(random user)", self.get_random_user())
         command_output.replace("$(random)", str(randint(0, 100)))
         command_output = re.sub(r"\$\((random) (\d+)\)", randint_replace, command_output)
