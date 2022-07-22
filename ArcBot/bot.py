@@ -432,11 +432,11 @@ class ArcBot(commands.Bot):
             return str(randint(0, int(matchobj.groups()[1])))
 
         command_output.replace("$(user)", ctx.author.name)
-        args = ctx.message.content.split(" ", 2)
+        args = ctx.content.split(" ", 2)
         if len(args) >= 2:
             command_output = command_output.replace("$(target)", args[1])
         else:
-            command_output.replace("$(target)", ctx.message.content.split(" ", 2)[1])
+            command_output.replace("$(target)", ctx.content.split(" ", 2)[1])
         command_output.replace("$(random user)", self.get_random_user())
         command_output.replace("$(random)", str(randint(0, 100)))
         command_output = re.sub(r"\$\((random) (\d+)\)", randint_replace, command_output)
