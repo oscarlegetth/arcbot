@@ -5,7 +5,7 @@ import re
 from asyncio.tasks import sleep
 from threading import Timer
 from dotenv import load_dotenv
-from random import randint
+import random
 import dotenv
 
 import pkg_resources
@@ -49,7 +49,7 @@ running_routines : dict[str, routines.Routine] = {}
 # helper methods
 
 def get_random_item():
-    return items[randint(0, len(items))].name
+    return items[random.randint(0, len(items))].name
 
 def get_random_items(i):
     return list(set([get_random_item() for _ in range(i)]))
@@ -204,7 +204,7 @@ class ArcBot(commands.Bot):
 
     def get_random_user(self, ctx):
         chatters_list = [chatter.name for chatter in list(ctx.chatters) if chatter.name not in self.known_bots]
-        return chatters_list[randint(0, len(chatters_list)) - 1]
+        return chatters_list[random.randint(0, len(chatters_list)) - 1]
 
     def check_if_mod(self, user):
         return "moderator" in user.badges or "broadcaster" in user.badges
@@ -239,7 +239,7 @@ class ArcBot(commands.Bot):
             message = self.remove_7tv_chars(ctx.content)
             lower_message = message.lower()
             # respond to messages ending with "er?"
-            if message[-3:] == "er?" and (randint(0, 9) == 0 or "broadcaster" in ctx.author.badges):
+            if message[-3:] == "er?" and (random.randint(0, 9) == 0 or "broadcaster" in ctx.author.badges):
                 self.send_message(f"{message.split()[-1]} I hardly know her!!! LaughHard")
 
             # respond to people calling the bot stupid
@@ -250,15 +250,16 @@ class ArcBot(commands.Bot):
                 self.send_message(f"{ctx.author.name} is a good human peepoShy")
 
             # respond to bastin
-            if ctx.author.name.lower() == "bastin101" and randint(0, 3) == 0:
-                random_number = randint(0, 101)
+            if ctx.author.name.lower() == "bastin101" and random.randint(0, 3) == 0:
+                random_number = random.randint(0, 101)
                 self.send_message(f"bastin{random_number}+{101 - random_number} KEKW")
 
             # respond to commands in db
             command_name = lower_message.split(" ", 1)[0]
             if command_name in self.arcbot_commands:
                 output = self.process_arcbot_command(ctx, self.arcbot_commands[command_name])
-                self.send_message(output)
+                if output:
+                    self.send_message(output)
 
         else:
             print(f"Unexpected context encountered. Type: {type(ctx)} str: {str(ctx)}")
@@ -297,8 +298,8 @@ class ArcBot(commands.Bot):
 
     @commands.command(name="spank")
     async def spank(self, ctx: commands.Context):
-        if randint(0, 99) == 0:
-            spanked = self.rare_spank_table[randint(0, len(self.rare_spank_table) - 1)]
+        if random.randint(0, 99) == 0:
+            spanked = self.rare_spank_table[random.randint(0, len(self.rare_spank_table) - 1)]
         else:
             spanked = self.get_random_user(ctx)
 
@@ -307,8 +308,8 @@ class ArcBot(commands.Bot):
     @commands.command(name="slap")
     async def slap(self, ctx: commands.Context):
         
-        if randint(0, 99) == 0:
-            slapped = self.rare_spank_table[randint(0, len(self.rare_spank_table) - 1)]
+        if random.randint(0, 99) == 0:
+            slapped = self.rare_spank_table[random.randint(0, len(self.rare_spank_table) - 1)]
         else:
             slapped = self.get_random_user(ctx)
 
@@ -429,16 +430,19 @@ class ArcBot(commands.Bot):
         Replaces all occurances of '$(random x)' with a random number between 0-x \n
         """
         def randint_replace(matchobj):
-            return str(randint(0, int(matchobj.groups()[1])))
+            return str(random.randint(0, int(matchobj.groups()[1])))
 
-        command_output.replace("$(user)", ctx.author.name)
+        command_output = command_output.replace("$(user)", ctx.author.name)
         args = ctx.content.split(" ", 2)
         if len(args) >= 2:
             command_output = command_output.replace("$(target)", args[1])
         else:
-            command_output.replace("$(target)", ctx.content.split(" ", 2)[1])
-        command_output.replace("$(random user)", self.get_random_user())
-        command_output.replace("$(random)", str(randint(0, 100)))
+            return None
+        if len(self.chatters_cache) > 0:
+            command_output = command_output.replace("$(random user)", str(random.choice(tuple(self.chatters_cache)).name))
+        else:
+            command_output = command_output.replace("$(random user)", ctx.author.name)
+        command_output = command_output.replace("$(random)", str(random.randint(0, 100)))
         command_output = re.sub(r"\$\((random) (\d+)\)", randint_replace, command_output)
         return command_output
 
@@ -466,11 +470,11 @@ class ArcBot(commands.Bot):
                 target = target[1:]
             bot.send_message(f"{event.user.name} is trying to timeout {target} PauseChamp")
             await sleep(2)
-            if randint(0, 1) == 0:
+            if random.randint(0, 1) == 0:
                 bot.send_message(f"{target} has been harvested for 5 minutes x0r6ztGiggle")
                 bot.send_message(f"/timeout {target} 5m")
             else:
-                if randint(0, 1) == 0:
+                if random.randint(0, 1) == 0:
                     bot.send_message(f"{target} managed to parry the timeout! {event.user.name} has been timed out for 5 minutes instead.")
                     bot.send_message(f"/timeout {event.user.name} 5m")
                 else:
