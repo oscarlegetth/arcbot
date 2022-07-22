@@ -95,22 +95,20 @@ class ArcBot(commands.Bot):
 
     async def run_pubsub(self):
         validate_response = self.validate_token("PUBSUB_ACCESS_TOKEN")
+        await asyncio.sleep(1)
         if "expires_in" not in validate_response:
             expires_in = 0
         else:
             expires_in = int(validate_response["expires_in"])
-        await asyncio.sleep(1)
-        t = Timer(expires_in - 15, asyncio.create_task(self.refresh_and_connect_to_pubsub()))
-        t.start()
-        # await self.refresh_and_connect_to_pubsub(delay=expires_in - 15)
+        asyncio.create_task(self.refresh_and_connect_to_pubsub(expires_in))
         print(f"set up timer to refresh pubsub access token in {expires_in} seconds")
 
         try:
             await self.connect_pubsub()
+            await asyncio.sleep(1)
         except (twitchio.errors.AuthenticationError):
             print("Failed to connect to pubsub server, attempting to refresh token")
-            await self.refresh_token("PUBSUB_ACCESS_TOKEN", "PUBSUB_REFRESH_TOKEN")
-            await asyncio.sleep(1)
+            self.refresh_token("PUBSUB_ACCESS_TOKEN", "PUBSUB_REFRESH_TOKEN")
             try:
                 await self.connect_pubsub()
             except (twitchio.errors.AuthenticationError):
@@ -171,19 +169,19 @@ class ArcBot(commands.Bot):
 
     async def refresh_and_connect_to_pubsub(self, delay : int = 0):
         await asyncio.sleep(delay)
-        expires_in = await self.refresh_token("PUBSUB_ACCESS_TOKEN", "PUBSUB_REFRESH_TOKEN")
+        expires_in = self.refresh_token("PUBSUB_ACCESS_TOKEN", "PUBSUB_REFRESH_TOKEN")
         await self.connect_pubsub()
-        asyncio.create_task(self.refresh_and_connect_to_pubsub(delay=expires_in - 15))
+        await asyncio.create_task(self.refresh_and_connect_to_pubsub(delay=expires_in - 15))
 
     async def refresh_and_connect_access_token(self, delay : int = 0):
         await asyncio.sleep(delay)
-        expires_in = await self.refresh_token("ACCESS_TOKEN", "REFRESH_TOKEN")
+        expires_in = self.refresh_token("ACCESS_TOKEN", "REFRESH_TOKEN")
         # self._connection._token = os.environ["ACCESS_TOKEN"]
 
         _ = os.environ["ACCESS_TOKEN"]
          
         await self.connect()
-        asyncio.create_task(self.refresh_and_connect_access_token(delay=expires_in - 15))
+        await asyncio.create_task(self.refresh_and_connect_access_token(delay=expires_in - 15))
 
     async def event_command_error(self, context: commands.Context, error: Exception) -> None:
         if type(error) is twitchio.ext.commands.errors.CommandNotFound:
