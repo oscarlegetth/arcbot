@@ -41,6 +41,7 @@ items = items_api.load()
 wheel = wheel.Wheel()
 sailing = Sailing()
 pubsub_client = twitchio.Client(token=os.environ['PUBSUB_ACCESS_TOKEN'])
+pubsub_client.refresh_token = os.environ['PUBSUB_REFRESH_TOKEN']
 pubsub_client.pubsub = pubsub.PubSubPool(pubsub_client)
 cogs = {"Sailing" : Sailing, "Gamble" : Gamble, "HCIM_bets" : HCIM_bets}
 stream_live = False
@@ -65,6 +66,10 @@ class ArcBot(commands.Bot):
 
         if expires_in == 0:
             self.refresh_token("ACCESS_TOKEN", "REFRESH_TOKEN")
+            
+        validate_response = self.validate_token('PUBSUB_ACCESS_TOKEN')
+        if "expires_in" not in validate_response:
+            self.refresh_token("PUBSUB_ACCESS_TOKEN", "PUBSUB_REFRESH_TOKEN")
 
         # asyncio.run(self.refresh_and_connect_access_token(delay=expires_in - 15))
         # print(f"set up timer to refresh access token in {expires_in} seconds")
@@ -128,7 +133,7 @@ class ArcBot(commands.Bot):
     async def event_ready(self):
         """Called once when the bot goes online."""
         print(f"event_ready called")
-        await asyncio.create_task(self.run_pubsub())
+        await self.connect_pubsub()
         version = pkg_resources.get_distribution('ArcBot').version
         message = f"{os.environ['BOT_NICK']} v{version} is online!"
         print(message)
@@ -258,6 +263,7 @@ class ArcBot(commands.Bot):
             command_name = lower_message.split(" ", 1)[0]
             if command_name in self.arcbot_commands:
                 output = self.process_arcbot_command(ctx, self.arcbot_commands[command_name])
+                print(output)
                 if output:
                     self.send_message(output)
 
@@ -384,6 +390,8 @@ class ArcBot(commands.Bot):
 
     @commands.command(name="addarccom")
     async def add_arcbot_command(self, ctx: commands.Context):
+        if not self.check_if_mod(ctx.author):
+            return
         args = ctx.message.content.split(" ", 2)
         if len(args) < 3:
             await ctx.reply(f"Usage: !{args[0]} [command name] [command output]")
@@ -400,6 +408,8 @@ class ArcBot(commands.Bot):
 
     @commands.command(name="delarccom")
     async def delete_arcbot_command(self, ctx: commands.Context):
+        if not self.check_if_mod(ctx.author):
+            return
         args = ctx.message.content.split(" ", 1)
         command_name = args[1]
         if len(args) < 2:
@@ -434,10 +444,10 @@ class ArcBot(commands.Bot):
 
         command_output = command_output.replace("$(user)", ctx.author.name)
         args = ctx.content.split(" ", 2)
-        if len(args) >= 2:
+        if type(args) is list and len(args) >= 2:
             command_output = command_output.replace("$(target)", args[1])
         else:
-            return None
+            command_output = command_output.replace("$(target)", "")
         if len(self.chatters_cache) > 0:
             command_output = command_output.replace("$(random user)", str(random.choice(tuple(self.chatters_cache)).name))
         else:
@@ -479,9 +489,9 @@ class ArcBot(commands.Bot):
                     bot.send_message(f"/timeout {event.user.name} 5m")
                 else:
                     bot.send_message(f"{target} gets to live to see another day")
-        
-        # elif title == "song request":
-        #     bot.send_message("song requested pogg")
+
+        elif title == "song request":
+            bot.send_message("song requested pogg")
 
     #------------------------------------
     # ROUTINES
