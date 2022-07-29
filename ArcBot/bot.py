@@ -247,6 +247,10 @@ class ArcBot(commands.Bot):
             if message[-3:] == "er?" and (random.randint(0, 9) == 0 or "broadcaster" in ctx.author.badges):
                 self.send_message(f"{message.split()[-1]} I hardly know her!!! LaughHard")
 
+            # respond to messages starting with "i'm"
+            if message[0:3] == "i\'m" and (random.randint(0, 19) == 0 or "broadcaster" in ctx.author.badges):
+                end_index = next((i for i, ch in enumerate(message) if ch in {'.',',','!','?'}),None)
+                self.send_message(f"hi {message[4:end_index]}, i'm {os.environ['BOT_NICK']}")
             # respond to people calling the bot stupid
             if lower_message[0:10] == "stupid bot":
                 self.send_message(f"{ctx.author.name} is a stupid human 😡")
