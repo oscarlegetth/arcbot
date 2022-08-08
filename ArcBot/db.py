@@ -150,10 +150,10 @@ class DB():
         else:
             return fetched["command_output"]
 
-    def update_arc_command(self, command_name, command_output):
-        self.cur.execute("INSERT INTO commands(command_name, command_output) VALUES (?, ?) \
-            ON CONFLICT(command_name) DO UPDATE SET command_output = ? \
-            WHERE command_name = ?", (command_name, command_output, command_output, command_name))
+    def update_arc_command(self, command_name, command_output, username, time_now):
+        self.cur.execute("INSERT INTO commands(command_name, command_output, added_by, added_at, number_of_times_used) VALUES (?, ?, ?, ?, 0) \
+            ON CONFLICT(command_name) DO UPDATE SET command_output = ?, added_by = ?, added_at = ?, number_of_times_used = 0 \
+            WHERE command_name = ?", (command_name, command_output, username, time_now, command_output, username, time_now, command_name))
         self.con.commit()
 
     def delete_arc_command(self, command_name):

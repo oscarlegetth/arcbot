@@ -1,5 +1,4 @@
-from http import client
-from multiprocessing.connection import Client
+from datetime import datetime
 import os
 import re
 from asyncio.tasks import sleep
@@ -402,7 +401,7 @@ class ArcBot(commands.Bot):
             return
         command_name = args[1]
         command_output = args[2]
-        self.db.update_arc_command(command_name, command_output)
+        self.db.update_arc_command(command_name, command_output, ctx.author.name, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
         self.arcbot_commands[command_name] = command_output
         await ctx.reply(f"Command successfully added")
 
@@ -458,7 +457,7 @@ class ArcBot(commands.Bot):
         Replaces all occurances of '$(random x)' with a random number between 0-x \n
         Replaces all occurances of '$(count)' with the number of times this command has been used \n
         """
-        self.db.increment_arcbot_command_used(command_name)
+        self.db.increment_arcbot_command_used(command_name, 1)
         def randint_replace(matchobj):
             return str(random.randint(0, int(matchobj.groups()[1])))
 
