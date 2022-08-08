@@ -266,7 +266,7 @@ class ArcBot(commands.Bot):
             # respond to commands in db
             command_name = lower_message.split(" ", 1)[0]
             if command_name in self.arcbot_commands:
-                output = self.process_arcbot_command(ctx, self.arcbot_commands[command_name])
+                output = self.process_arcbot_command(ctx, command_name, self.arcbot_commands[command_name])
                 print(output)
                 if output:
                     self.send_message(output)
@@ -286,13 +286,13 @@ class ArcBot(commands.Bot):
         """Adds a '!test' command to the bot."""
         await ctx.send('test passed!')
 
-    @commands.command(name="task")
-    async def task(self, ctx: commands.Context):
-        if not "moderator" in ctx.author.badges:
-            return
+    # @commands.command(name="task")
+    # async def task(self, ctx: commands.Context):
+    #     if not "moderator" in ctx.author.badges:
+    #         return
         
-        if len(ctx.message.content < 6):
-            return
+    #     if len(ctx.message.content < 6):
+    #         return
 
         message = ctx.message.content[6:]
         with open("current_task.txt", 'w') as file:
@@ -306,47 +306,47 @@ class ArcBot(commands.Bot):
 
     rare_spank_table = ["WooxSolo", "Odablock", "Framed", "J1mmy", "Faux", "Coxie", "Mmorpg", "Real_Matk", "SkillSpecs", "Mr_Mammal", "Alfie", "Roidie", "itswill", "SkiddlerRS", "Dino_xx", "JagexModAsh", "FBI_Survelliance_Van_381b"]
 
-    @commands.command(name="spank")
-    async def spank(self, ctx: commands.Context):
-        if random.randint(0, 99) == 0:
-            spanked = self.rare_spank_table[random.randint(0, len(self.rare_spank_table) - 1)]
-        else:
-            spanked = self.get_random_user(ctx)
+    # @commands.command(name="spank")
+    # async def spank(self, ctx: commands.Context):
+    #     if random.randint(0, 99) == 0:
+    #         spanked = self.rare_spank_table[random.randint(0, len(self.rare_spank_table) - 1)]
+    #     else:
+    #         spanked = self.get_random_user(ctx)
 
-        await ctx.send(f"{ctx.author.name} has spanked {spanked} peepoShy")
+    #     await ctx.send(f"{ctx.author.name} has spanked {spanked} peepoShy")
 
-    @commands.command(name="slap")
-    async def slap(self, ctx: commands.Context):
+    # @commands.command(name="slap")
+    # async def slap(self, ctx: commands.Context):
         
-        if random.randint(0, 99) == 0:
-            slapped = self.rare_spank_table[random.randint(0, len(self.rare_spank_table) - 1)]
-        else:
-            slapped = self.get_random_user(ctx)
+    #     if random.randint(0, 99) == 0:
+    #         slapped = self.rare_spank_table[random.randint(0, len(self.rare_spank_table) - 1)]
+    #     else:
+    #         slapped = self.get_random_user(ctx)
 
-        await ctx.send(f"{ctx.author.name} has slapped {slapped} x0r6ztGiggle")
+    #     await ctx.send(f"{ctx.author.name} has slapped {slapped} x0r6ztGiggle")
 
     @commands.command(name="bye")
     async def bye(self, ctx: commands.Context):
         await ctx.send(f"/timeout {ctx.author.name} 1")
 
-    @commands.command(name="timeouts")
-    async def timeouts(self, ctx: commands.Context):
-        args = ctx.message.content.split()[1:]
-        if len(args) > 0:
-            timeouts = self.db.get_top_timeouts(args[0])
-            if timeouts:
-                await ctx.send(f"{args[0]} has been timed out a total of {timeouts} seconds by the arcwheel")
-            else:
-                await ctx.send(f"{args[0]} has not yet been timed out by the arcwheel")
-        else:
-            timeouts = self.db.get_top_timeouts()
-            if not timeouts:
-                await ctx.send("No one has been timed out yet")
-                return
-            message = f"Top timeouts:"
-            for timeout in timeouts:
-                message = message + f"\n{timeout[0]}: {timeout[1]}"
-            await ctx.send(message)
+    # @commands.command(name="timeouts")
+    # async def timeouts(self, ctx: commands.Context):
+    #     args = ctx.message.content.split()[1:]
+    #     if len(args) > 0:
+    #         timeouts = self.db.get_top_timeouts(args[0])
+    #         if timeouts:
+    #             await ctx.send(f"{args[0]} has been timed out a total of {timeouts} seconds by the arcwheel")
+    #         else:
+    #             await ctx.send(f"{args[0]} has not yet been timed out by the arcwheel")
+    #     else:
+    #         timeouts = self.db.get_top_timeouts()
+    #         if not timeouts:
+    #             await ctx.send("No one has been timed out yet")
+    #             return
+    #         message = f"Top timeouts:"
+    #         for timeout in timeouts:
+    #             message = message + f"\n{timeout[0]}: {timeout[1]}"
+    #         await ctx.send(message)
 
     @commands.command(name="cog")
     async def toggle_cog(self, ctx: commands.Context):
@@ -398,7 +398,7 @@ class ArcBot(commands.Bot):
             return
         args = ctx.message.content.split(" ", 2)
         if len(args) < 3:
-            await ctx.reply(f"Usage: !{args[0]} [command name] [command output]")
+            await ctx.reply(f"Usage: !{args[0]} [command name] [command output]. Use !helparccom for more info about the syntax.")
             return
         command_name = args[1]
         command_output = args[2]
@@ -433,16 +433,32 @@ class ArcBot(commands.Bot):
             $(target) first word after command, \
             $(random user) a random chatter, \
             $(random) a random number 0-100, \
-            $(random x) a random number 0-x.")
+            $(random x) a random number 0-x. \
+            $(count) the number of times this command has been used")
+    
+    @commands.command(name="infoarccom")
+    async def show_info_arcbot_command(self, ctx: commands.Context):
+        args = ctx.message.content.split(" ")
+        if len(args) < 2:
+            await ctx.reply("Usage: !infoarccom [command name]")
+            return
+        command_name = args[1]
+        command_info = db.get_arcbot_command_info(command_name)
+        if not command_info:
+            await ctx.reply(f"Command {command_name} not found")
+            return
+        await ctx.reply(f"Command {command_name}: Has been used {command_info['number_of_times_used']} time{'' if command_info['number_of_times_used'] == 1 else 's'}. Created by {command_info['added_by']} at {command_info['added_at']}.")
 
-    def process_arcbot_command(self, ctx: commands.Context, command_output: str) -> str:
+    def process_arcbot_command(self, ctx: commands.Context, command_name: str, command_output: str) -> str:
         """
         Replaces all occurances of '$(user)' with the name of the user who issued the command \n
         Replaces all occurances of '$(target)' with whatever first word is written after the name of the command \n
         Replaces all occurances of '$(random user)' with a random user from the chatters_cache \n
         Replaces all occurances of '$(random)' with a random number between 0-100 \n
         Replaces all occurances of '$(random x)' with a random number between 0-x \n
+        Replaces all occurances of '$(count)' with the number of times this command has been used \n
         """
+        self.db.increment_arcbot_command_used(command_name)
         def randint_replace(matchobj):
             return str(random.randint(0, int(matchobj.groups()[1])))
 
@@ -458,6 +474,7 @@ class ArcBot(commands.Bot):
             command_output = command_output.replace("$(random user)", ctx.author.name)
         command_output = command_output.replace("$(random)", str(random.randint(0, 100)))
         command_output = re.sub(r"\$\((random) (\d+)\)", randint_replace, command_output)
+        command_output = command_output.replace("$(count)", self.db.get_arcbot_command_info(command_name)["number_of_times_used"])
         return command_output
 
     #------------------------------------

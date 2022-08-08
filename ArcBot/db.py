@@ -173,6 +173,25 @@ class DB():
                 result[row["command_name"]] = row["command_output"]
             return result
 
+    def get_arcbot_command_info(self, command_name):
+        self.cur.execute("SELECT * FROM commands \
+            WHERE command_name = ?", (command_name))
+        fetched = self.cur.fetchone()
+        if not fetched:
+            return None
+        else:
+            return fetched
+
+    def increment_arcbot_command_used(self, command_name, amount):
+        current_amount = self.get_arcbot_command_info()["number_of_times_used"]
+        if current_amount:
+            current_amount = current_amount + amount
+            self.cur.execute("UPDATE commands \
+                SET number_of_times_used = ? \
+                WHERE command_name = ?", (current_amount, command_name))
+        self.con.commit()
+        return current_amount
+
 
     
     # seaman

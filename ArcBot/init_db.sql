@@ -44,5 +44,8 @@ CREATE TABLE IF NOT EXISTS ships(
 
 CREATE TABLE IF NOT EXISTS commands(
     command_name TEXT PRIMARY KEY,
-    command_output TEXT
+    command_output TEXT,
+    number_of_times_used INT,
+    added_by TEXT,
+    added_at TEXT
 );
