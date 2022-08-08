@@ -268,7 +268,6 @@ class ArcBot(commands.Bot):
             command_name = lower_message.split(" ", 1)[0]
             if command_name in self.arcbot_commands:
                 output = self.process_arcbot_command(ctx, command_name, self.arcbot_commands[command_name])
-                print(output)
                 if output:
                     self.send_message(output)
 
