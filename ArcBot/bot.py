@@ -264,7 +264,7 @@ class ArcBot(commands.Bot):
                 self.send_message(f"bastin{random_number}+{101 - random_number} KEKW")
 
             # respond to commands in db
-            command_name = lower_message.split(" ", 1)[0]
+            command_name = message.split(" ", 1)[0]
             if command_name in self.arcbot_commands:
                 output = self.process_arcbot_command(ctx, command_name, self.arcbot_commands[command_name])
                 if output:
@@ -293,10 +293,10 @@ class ArcBot(commands.Bot):
     #     if len(ctx.message.content < 6):
     #         return
 
-        message = ctx.message.content[6:]
-        with open("current_task.txt", 'w') as file:
-            file.write(f'{message}')
-            await ctx.send(f"Task has been updated to: {message}")
+    #    message = ctx.message.content[6:]
+    #    with open("current_task.txt", 'w') as file:
+    #        file.write(f'{message}')
+    #        await ctx.send(f"Task has been updated to: {message}")
 
 
     @commands.command(name="random_item")
@@ -442,7 +442,7 @@ class ArcBot(commands.Bot):
             await ctx.reply("Usage: !infoarccom [command name]")
             return
         command_name = args[1]
-        command_info = db.get_arcbot_command_info(command_name)
+        command_info = self.db.get_arcbot_command_info(command_name)
         if not command_info:
             await ctx.reply(f"Command {command_name} not found")
             return
@@ -473,7 +473,7 @@ class ArcBot(commands.Bot):
             command_output = command_output.replace("$(random user)", ctx.author.name)
         command_output = command_output.replace("$(random)", str(random.randint(0, 100)))
         command_output = re.sub(r"\$\((random) (\d+)\)", randint_replace, command_output)
-        command_output = command_output.replace("$(count)", self.db.get_arcbot_command_info(command_name)["number_of_times_used"])
+        command_output = command_output.replace("$(count)", str(self.db.get_arcbot_command_info(command_name)["number_of_times_used"]))
         return command_output
 
     #------------------------------------
