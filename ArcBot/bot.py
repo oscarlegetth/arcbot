@@ -91,8 +91,10 @@ class ArcBot(commands.Bot):
         else:
             print(f"Loaded {len(self.arcbot_commands)} command(s) from database")
         self.chatters_cache = []
-        self.known_bots = ["arcbot73", "creatisbot", "nightbot", "anotherttvviewer", "streamlabs", "kaxips06", "7tvapp"]
-        
+        self.known_bots = [os.environ["BOT_NICK"], "creatisbot", "nightbot", "anotherttvviewer", "streamlabs", "kaxips06", "7tvapp"]
+        self.announcements = []
+        self.next_announcements_index = 0
+
         for default_cog in os.environ["DEFAULT_COGS"].split(" "):
             self.add_cog(cogs[default_cog](self))
         print(f"Successfully added cogs")
@@ -133,8 +135,11 @@ class ArcBot(commands.Bot):
         """Called once when the bot goes online."""
         print(f"event_ready called")
         await self.connect_pubsub()
+        self.master_routine.start()
         version = pkg_resources.get_distribution('ArcBot').version
         message = f"{os.environ['BOT_NICK']} v{version} is online!"
+        # ---------------------------------------------------
+        self.announce_routine.start()
         print(message)
         self.send_message(message)
 
@@ -285,14 +290,6 @@ class ArcBot(commands.Bot):
         """Adds a '!test' command to the bot."""
         await ctx.send('test passed!')
 
-    # @commands.command(name="task")
-    # async def task(self, ctx: commands.Context):
-    #     if not "moderator" in ctx.author.badges:
-    #         return
-        
-    #     if len(ctx.message.content < 6):
-    #         return
-
         message = ctx.message.content[6:]
         with open("current_task.txt", 'w') as file:
             file.write(f'{message}')
@@ -305,47 +302,9 @@ class ArcBot(commands.Bot):
 
     rare_spank_table = ["WooxSolo", "Odablock", "Framed", "J1mmy", "Faux", "Coxie", "Mmorpg", "Real_Matk", "SkillSpecs", "Mr_Mammal", "Alfie", "Roidie", "itswill", "SkiddlerRS", "Dino_xx", "JagexModAsh", "FBI_Survelliance_Van_381b"]
 
-    # @commands.command(name="spank")
-    # async def spank(self, ctx: commands.Context):
-    #     if random.randint(0, 99) == 0:
-    #         spanked = self.rare_spank_table[random.randint(0, len(self.rare_spank_table) - 1)]
-    #     else:
-    #         spanked = self.get_random_user(ctx)
-
-    #     await ctx.send(f"{ctx.author.name} has spanked {spanked} peepoShy")
-
-    # @commands.command(name="slap")
-    # async def slap(self, ctx: commands.Context):
-        
-    #     if random.randint(0, 99) == 0:
-    #         slapped = self.rare_spank_table[random.randint(0, len(self.rare_spank_table) - 1)]
-    #     else:
-    #         slapped = self.get_random_user(ctx)
-
-    #     await ctx.send(f"{ctx.author.name} has slapped {slapped} x0r6ztGiggle")
-
     @commands.command(name="bye")
     async def bye(self, ctx: commands.Context):
         await ctx.send(f"/timeout {ctx.author.name} 1")
-
-    # @commands.command(name="timeouts")
-    # async def timeouts(self, ctx: commands.Context):
-    #     args = ctx.message.content.split()[1:]
-    #     if len(args) > 0:
-    #         timeouts = self.db.get_top_timeouts(args[0])
-    #         if timeouts:
-    #             await ctx.send(f"{args[0]} has been timed out a total of {timeouts} seconds by the arcwheel")
-    #         else:
-    #             await ctx.send(f"{args[0]} has not yet been timed out by the arcwheel")
-    #     else:
-    #         timeouts = self.db.get_top_timeouts()
-    #         if not timeouts:
-    #             await ctx.send("No one has been timed out yet")
-    #             return
-    #         message = f"Top timeouts:"
-    #         for timeout in timeouts:
-    #             message = message + f"\n{timeout[0]}: {timeout[1]}"
-    #         await ctx.send(message)
 
     @commands.command(name="cog")
     async def toggle_cog(self, ctx: commands.Context):
@@ -390,6 +349,10 @@ class ArcBot(commands.Bot):
                 return
 
         await ctx.reply(f"Usage: !cog <enable/disable> <cog_name>")
+
+    #------------------------------------
+    # ARCBOT-COMMANDS
+    #------------------------------------
 
     @commands.command(name="addarccom")
     async def add_arcbot_command(self, ctx: commands.Context):
@@ -477,6 +440,27 @@ class ArcBot(commands.Bot):
         return command_output
 
     #------------------------------------
+    # ANNOUNCEMENTS
+    #------------------------------------
+
+    @commands.command(name="addannouncement")
+    async def add_announcement(self, ctx: commands.Context):
+        announcement_to_add = ctx.message.content.split(" ", 1)
+        if announcement_to_add:
+            self.announcements.append(announcement_to_add)
+            await ctx.reply(f"Announcement added.")
+        else:
+            await ctx.reply(f"Usage: !addannouncement [announcement text]")
+
+    @commands.command(name="viewannouncements")
+    async def view_announcements(self, ctx: commands.Context):
+        await ctx.author.send(f"Current announcements:")
+        for i, announcement in enumerate(self.announcements):
+            await ctx.author.send(f"{i}: {announcement}")
+            await sleep(0.5)
+        await ctx.reply(f"Sent list of announcements")
+
+    #------------------------------------
     # CHANNEL POINT REDEMPTIONS
     #------------------------------------
 
@@ -518,16 +502,35 @@ class ArcBot(commands.Bot):
     #------------------------------------
 
     @routines.routine(minutes=10)
-    async def check_if_stream_live_routine(self):
+    async def master_routine(self):
+        """
+        Master routine. Stops all other routines when the stream is not live and resumes then when the stream goes live again.
+        """
+        routines = [self.sailing_routine, self.announce_routine]
+
         if self.check_if_stream_live():
-            if self.check_sailing.__name__ not in running_routines:
-                self.check_sailing.start()
+            stream_live = True
+            for routine in routines:
+                if routine.__name__ not in running_routines:
+                    routine.start()
+                    running_routines[routine.__name__] = routine
         else:
+            stream_live = False
             for routine in running_routines.values():
                 routine.stop()
 
     @routines.routine(seconds=10)
-    async def check_sailing(self):
+    async def announce_routine(self):
+        if len(self.announcements) == 0:
+            return
+        announcement = self.announcements[self.next_announcements_index]
+        self.next_announcements_index += 1
+        if self.next_announcements_index >= len(self.announcements):
+            self.announcements = 0
+        self.send_message(f"/announcement {announcement}")
+
+    @routines.routine(seconds=10)
+    async def sailing_routine(self):
         if "Sailing" in bot.get_cog.keys():
             sailing.update()
 
