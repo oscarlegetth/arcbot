@@ -42,6 +42,12 @@ CREATE TABLE IF NOT EXISTS ships(
     crew_capacity INT
 );
 
+CREATE TABLE IF NOT EXISTS announcements(
+    announcement_text TEXT,
+    added_by TEXT,
+    added_at TEXT
+);
+
 CREATE TABLE IF NOT EXISTS commands(
     command_name TEXT PRIMARY KEY,
     command_output TEXT,

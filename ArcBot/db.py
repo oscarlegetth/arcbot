@@ -292,3 +292,18 @@ class DB():
             stats.hp, stats.hull, stats.cannons, stats.sails, stats.cargo_current_amount, stats.cargo_capacity, stats.crew_current_amount, stats.crew_capacity, stats.bet, stats.username))
         
         self.con.commit()
+
+    # announcements
+    def insert_announcement(self, announcement_text, username, time):
+        self.cur.execute("INSERT INTO announcements(announcement_text, added_by, added_at) VALUES(?, ?, ?)",
+            (announcement_text, username, time))
+        self.con.commit()
+
+    def get_all_announcements(self):
+        self.cur.execute("SELECT * FROM announcements")
+        fetched = self.cur.fetchall()
+        if not fetched:
+            return None
+        else:
+            return fetched
+
