@@ -54,6 +54,9 @@ def get_random_item():
 def get_random_items(i):
     return list(set([get_random_item() for _ in range(i)]))
 
+def get_current_time_str():
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
 class ArcBot(commands.Bot):
 
     def __init__(self):
@@ -93,6 +96,8 @@ class ArcBot(commands.Bot):
         self.chatters_cache = []
         self.known_bots = [os.environ["BOT_NICK"], "creatisbot", "nightbot", "anotherttvviewer", "streamlabs", "kaxips06", "7tvapp"]
         self.announcements = []
+        for announcement in self.db.get_all_announcements():
+            self.announcements.append(announcement["announcement_text"])
         self.next_announcements_index = 0
 
         for default_cog in os.environ["DEFAULT_COGS"].split(" "):
@@ -356,7 +361,7 @@ class ArcBot(commands.Bot):
             return
         command_name = args[1]
         command_output = args[2]
-        self.db.update_arc_command(command_name, command_output, ctx.author.name, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        self.db.update_arc_command(command_name, command_output, ctx.author.name, get_current_time_str())
         self.arcbot_commands[command_name] = command_output
         await ctx.reply(f"Command successfully added")
 
@@ -440,6 +445,7 @@ class ArcBot(commands.Bot):
         announcement_to_add = ctx.message.content.split(" ", 1)
         if announcement_to_add:
             self.announcements.append(announcement_to_add)
+            self.db.insert_announcement(announcement_to_add, ctx.author.name, get_current_time_str())
             await ctx.reply(f"Announcement added.")
         else:
             await ctx.reply(f"Usage: !addannouncement [announcement text]")
