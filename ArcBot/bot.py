@@ -539,7 +539,7 @@ class ArcBot(commands.Bot):
         announcement = self.announcements[self.next_announcement_index]
         self.next_announcement_index += 1
         if self.next_announcement_index >= len(self.announcements):
-            self.announcements = 0
+            self.next_announcement_index = 0
         self.send_message(f"/announcement {announcement}")
 
     @routines.routine(seconds=10)
