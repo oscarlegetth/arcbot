@@ -100,8 +100,8 @@ class ArcBot(commands.Bot):
         if stored_announcements:
             for announcement in stored_announcements:
                 self.announcements.append(announcement["announcement_text"])
-            self.next_announcements_index = 0
             print(f"Loaded {len(self.announcements)} announcement(s) from database")
+        self.next_announcement_index = 0
 
         self.chatters_cache = []
         self.known_bots = [os.environ["BOT_NICK"], "creatisbot", "nightbot", "anotherttvviewer", "streamlabs", "kaxips06", "7tvapp"]
@@ -536,9 +536,9 @@ class ArcBot(commands.Bot):
     async def announce_routine(self):
         if len(self.announcements) == 0:
             return
-        announcement = self.announcements[self.next_announcements_index]
-        self.next_announcements_index += 1
-        if self.next_announcements_index >= len(self.announcements):
+        announcement = self.announcements[self.next_announcement_index]
+        self.next_announcement_index += 1
+        if self.next_announcement_index >= len(self.announcements):
             self.announcements = 0
         self.send_message(f"/announcement {announcement}")
 
