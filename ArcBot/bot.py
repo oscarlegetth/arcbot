@@ -88,18 +88,23 @@ class ArcBot(commands.Bot):
         wheel.db = self.db
         sailing.db = self.db
         sailing.bot = self
+
         self.arcbot_commands = self.db.get_all_commands()
         if not self.arcbot_commands:
             self.arcbot_commands = {}
         else:
             print(f"Loaded {len(self.arcbot_commands)} command(s) from database")
+
+        self.announcements = []
+        stored_announcements = self.db.get_all_announcements()
+        if stored_announcements:
+            for announcement in stored_announcements:
+                self.announcements.append(announcement["announcement_text"])
+            self.next_announcements_index = 0
+            print(f"Loaded {len(self.announcements)} announcement(s) from database")
+
         self.chatters_cache = []
         self.known_bots = [os.environ["BOT_NICK"], "creatisbot", "nightbot", "anotherttvviewer", "streamlabs", "kaxips06", "7tvapp"]
-        self.announcements = []
-        for announcement in self.db.get_all_announcements():
-            self.announcements.append(announcement["announcement_text"])
-        self.next_announcements_index = 0
-
         for default_cog in os.environ["DEFAULT_COGS"].split(" "):
             self.add_cog(cogs[default_cog](self))
         print(f"Successfully added cogs")
@@ -143,7 +148,6 @@ class ArcBot(commands.Bot):
         self.master_routine.start()
         version = pkg_resources.get_distribution('ArcBot').version
         message = f"{os.environ['BOT_NICK']} v{version} is online!"
-        # ---------------------------------------------------
         self.announce_routine.start()
         print(message)
         self.send_message(message)
