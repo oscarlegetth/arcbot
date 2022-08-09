@@ -446,8 +446,9 @@ class ArcBot(commands.Bot):
 
     @commands.command(name="addannouncement")
     async def add_announcement(self, ctx: commands.Context):
-        announcement_to_add = ctx.message.content.split(" ", 1)
-        if announcement_to_add:
+        args = ctx.message.content.split(" ", 1)
+        if len(args) > 1:
+            announcement_to_add = args[1]
             self.announcements.append(announcement_to_add)
             self.db.insert_announcement(announcement_to_add, ctx.author.name, get_current_time_str())
             await ctx.reply(f"Announcement added.")
