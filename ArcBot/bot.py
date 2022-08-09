@@ -160,11 +160,9 @@ class ArcBot(commands.Bot):
         expires_in = int(response.json()['expires_in'])
         refresh_token = response.json()['refresh_token']
 
-        os.environ[token_key] = new_access_token
-        dotenv.set_key(dotenv_path, token_key, os.environ[token_key])
-        os.environ[refresh_token_key] = refresh_token
-        dotenv.set_key(dotenv_path, refresh_token_key, os.environ[refresh_token_key])
-        load_dotenv()
+        dotenv.set_key(dotenv_path, token_key, new_access_token)
+        dotenv.set_key(dotenv_path, refresh_token_key, refresh_token)
+        load_dotenv(override=True)
         return expires_in
 
     def validate_token(self, token_key : str):
@@ -225,7 +223,7 @@ class ArcBot(commands.Bot):
             "Client-Id": f"{os.environ['CLIENT_ID']}"}
         response = requests.post(url, data=payload, headers=headers)
         json = response.json()
-        if len(json["data"]) > 0:
+        if "data" in json and len(json["data"]) > 0:
             return json["data"][0]["type"] == "live"
         return False
 
@@ -500,8 +498,18 @@ class ArcBot(commands.Bot):
         """
         Master routine. Stops all other routines when the stream is not live and resumes then when the stream goes live again.
         """
-        routines = [self.sailing_routine, self.announce_routine]
+        if os.environ["PUBSUB_ACCESS_TOKEN"] != pubsub_client._connection._token:
+            dotenv.set_key(dotenv_path,  "PUBSUB_ACCESS_TOKEN", pubsub_client._connection._token)
+            load_dotenv(override=True)
+        # if os.environ["PUBSUB_REFRESH_TOKEN"] != pubsub_client.refresh_token:
+        #     dotenv.set_key(dotenv_path,  "PUBSUB_REFRESH_TOKEN", pubsub_client.refresh_token)
+        if os.environ["ACCESS_TOKEN"] != self._connection._token:
+            dotenv.set_key(dotenv_path,  "ACCESS_TOKEN", self._connection._token)
+            load_dotenv(override=True)
+        # if os.environ["REFRESH_TOKEN"] != self.refresh_token:
+        #     dotenv.set_key(dotenv_path,  "PUBSUB_REFRESH_TOKEN", self.refresh_token)
 
+        routines = [self.sailing_routine, self.announce_routine]
         if self.check_if_stream_live():
             stream_live = True
             for routine in routines:
