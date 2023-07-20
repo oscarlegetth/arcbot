@@ -7,5 +7,5 @@ __pycache__
 ArcBot/ArcBot.egg-info
 ArcBot.egg-info
 *.sqlite3
-ArcBot/static/banned_hardly_knew_her_words.txt
+ArcBot/static/banned_hardly_know_her_words.txt
 
